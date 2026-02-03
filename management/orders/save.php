@@ -57,9 +57,16 @@ if (isset($_POST['valider'])) {
                     exit;
                 }
 
-                // Récupérer le premier manager associé au produit (s'il existe)
+                // Récupérer le manager associé au produit dans le pays du client
                 $productManagers = $productManager->getProductManagers($productId);
-                $managerId = !empty($productManagers) ? $productManagers[0]['id'] : null;
+                $managerId = null;
+                $clientCountry = htmlspecialchars($_POST['client_country']);
+                foreach ($productManagers as $manager) {
+                    if ($manager['country'] == $clientCountry) {
+                        $managerId = $manager['id'];
+                        break;
+                    }
+                }
 
                 $data = [
                     'product_id'    => $productId,
