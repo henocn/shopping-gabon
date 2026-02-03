@@ -151,12 +151,11 @@ class Order
             COALESCE(pp.name, '') AS pack_name
         FROM orders o
         LEFT JOIN products p ON p.id = o.product_id
-        LEFT JOIN product_countries pc 
-            ON pc.product_id = p.id 
+        LEFT JOIN product_countries pc
+            ON pc.product_id = p.id
            AND pc.country_id = o.client_country
         LEFT JOIN product_packs pp ON pp.id = o.pack_id
-        LEFT JOIN product_managers pm 
-            ON pm.manager_id = :manager_id
+        WHERE o.manager_id = :manager_id
         ORDER BY o.id DESC
     ";
 
