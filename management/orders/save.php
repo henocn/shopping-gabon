@@ -40,9 +40,19 @@ if (isset($_POST['valider'])) {
                 //$pack = $packManager->getPackById($packId);
                 $product = $productManager->getProducts($productId);
                 
-                // Récupérer le prix de vente depuis la table product_countries
+                // Récupérer le prix de vente depuis la table product_countries pour le pays choisi
                 $productCountries = $productManager->getProductCountries($productId);
-                $sellingPrice = !empty($productCountries) ? $productCountries[0]['selling_price'] : 0;
+                $sellingPrice = 0;
+                $clientCountry = htmlspecialchars($_POST['client_country']);
+                foreach ($productCountries as $countryPrice) {
+                    if ($countryPrice['id'] == $clientCountry) {
+                        $sellingPrice = $countryPrice['selling_price'];
+                        break;
+                    }
+                }
+
+                var_dump($sellingPrice);
+                die();
                 
                 // Récupérer le premier manager associé au produit (s'il existe)
                 $productManagers = $productManager->getProductManagers($productId);
