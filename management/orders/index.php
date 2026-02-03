@@ -751,6 +751,13 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
             }
       </script>
 
+      <script>
+            // Auto-refresh the page every 10 seconds
+            setInterval(function() {
+                  location.reload();
+            }, 1000 * 60);
+      </script>
+
 </body>
 
 </html>
