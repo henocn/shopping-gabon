@@ -36,9 +36,9 @@ class Order
     {
         $req = $this->bd->prepare("
         INSERT INTO orders 
-        (product_id, pack_id, purchase_price, total_price, quantity, client_name, client_country, client_adress, client_phone, client_note, newstat, manager_id) 
+        (product_id, pack_id, purchase_price, total_price, unit_price, quantity, client_name, client_country, client_adress, client_phone, client_note, newstat, manager_id) 
         VALUES 
-        (:product_id, :pack_id, :purchase_price, :total_price, :quantity, :client_name, :client_country, :client_adress, :client_phone, :client_note, :newstat, :manager_id)
+        (:product_id, :pack_id, :purchase_price, :total_price, :unit_price, :quantity, :client_name, :client_country, :client_adress, :client_phone, :client_note, :newstat, :manager_id)
     ");
 
         $req->execute([
@@ -46,6 +46,7 @@ class Order
             'pack_id' => (int) ($data['pack_id'] ?? 0),
             'purchase_price' => (int) ($data['purchase_price'] ?? 0),
             'total_price' => (int) ($data['total_price'] ?? 0),
+            'unit_price' => (int) ($data['total_price'] ?? 0),
             'quantity' => (int) ($data['quantity'] ?? 1),
             'client_name' => $data['client_name'] ?? '',
             'client_country' => $data['client_country'],

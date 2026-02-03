@@ -32,6 +32,7 @@ if (isset($_POST['valider'])) {
 
                 $packId = !empty($_POST['pack_id']) ? htmlspecialchars($_POST['pack_id']) : null;
                 $productId = htmlspecialchars($_POST['product_id']);
+                $lang = isset($_POST['lang']) && $_POST['lang'] != '' ? $_POST['lang'] : 'fr';
 
                 if($packId != null) {
                     $pack = $packManager->getPackById($packId);
@@ -39,7 +40,7 @@ if (isset($_POST['valider'])) {
 
                 //$pack = $packManager->getPackById($packId);
                 $product = $productManager->getProducts($productId);
-                
+
                 // Récupérer le prix de vente depuis la table product_countries pour le pays choisi
                 $productCountries = $productManager->getProductCountries($productId);
                 $sellingPrice = 0;
@@ -50,10 +51,12 @@ if (isset($_POST['valider'])) {
                         break;
                     }
                 }
+                if ($sellingPrice == 0) {
+                    $_SESSION['order_message'] = "Une erreur est survenue lors de la passation de votre commande. Veuillez réessayer.";
+                    header("Location: ../../index2.php?id=" . $productId . "&lang=" . $lang);
+                    exit;
+                }
 
-                var_dump($sellingPrice);
-                die();
-                
                 // Récupérer le premier manager associé au produit (s'il existe)
                 $productManagers = $productManager->getProductManagers($productId);
                 $managerId = !empty($productManagers) ? $productManagers[0]['id'] : null;
@@ -71,7 +74,6 @@ if (isset($_POST['valider'])) {
                     'quantity'      => !empty($pack['quantity']) ? $pack['quantity'] : 1,
                     'manager_id'   => $managerId,
                 ];
-                $lang = isset($_POST['lang']) && $_POST['lang'] != '' ? $_POST['lang'] : 'fr';
 
 
 
