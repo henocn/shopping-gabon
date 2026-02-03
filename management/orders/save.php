@@ -60,7 +60,6 @@ if (isset($_POST['valider'])) {
                 // Récupérer le manager associé au produit dans le pays du client
                 $productManagers = $productManager->getProductManagers($productId);
                 $managerId = null;
-                $clientCountry = htmlspecialchars($_POST['client_country']);
                 foreach ($productManagers as $manager) {
                     if ($manager['country'] == $clientCountry) {
                         $managerId = $manager['id'];
