@@ -1,4 +1,4 @@
-update <?php
+<?php
 
 require '../../vendor/autoload.php';
 require '../../utils/middleware.php';
@@ -59,16 +59,15 @@ $products = $product->getAllProducts();
                         // Récupérer les managers et pays pour ce produit
                         $managers = $product->getProductManagers($prod['product_id']);
                         $countries = $product->getProductCountries($prod['product_id']);
-                    ?>
+                        ?>
                         <tr>
                             <td><?php echo $prod['product_id']; ?></td>
                             <td>
                                 <img src="../../uploads/main/<?php echo $prod['image']; ?>"
-                                    alt="<?php echo $prod['name']; ?>"
-                                    class="product-image">
+                                    alt="<?php echo $prod['name']; ?>" class="product-image">
                             </td>
                             <td>
-                                <strong><?php echo htmlspecialchars($prod['name']); ?></strong>
+                                <?php echo htmlspecialchars($prod['name']); ?>
                                 <?php if (!empty($prod['ar_name'])): ?>
                                     <br><small class="text-muted"><?php echo htmlspecialchars($prod['ar_name']); ?></small>
                                 <?php endif; ?>
@@ -77,16 +76,18 @@ $products = $product->getAllProducts();
                                 <?php if (!empty($countries)): ?>
                                     <?php foreach ($countries as $ctry): ?>
                                         <div style="margin-bottom: 8px;">
-                                            <span class="badge bg-info"><?php echo htmlspecialchars($ctry['code']); ?> - <?php echo number_format($ctry['selling_price'], 0, ',', ' '); ?> FCFA</span>
+                                            <span class="badge bg-info"><?php echo htmlspecialchars($ctry['code']); ?> -
+                                                <?php echo number_format($ctry['selling_price'], 0, ',', ' '); ?> FCFA</span>
                                             <?php
-                                                $countryManagers = array_filter($managers, function($m) use ($ctry) {
-                                                    return $m['country_code'] === $ctry['code'];
-                                                });
+                                            $countryManagers = array_filter($managers, function ($m) use ($ctry) {
+                                                return $m['country_code'] === $ctry['code'];
+                                            });
                                             ?>
                                             <?php if (!empty($countryManagers)): ?>
                                                 <div style="font-size: 12px; margin-top: 3px;">
                                                     <?php foreach ($countryManagers as $mgr): ?>
-                                                        <span class="badge bg-secondary"><?php echo htmlspecialchars($mgr['name']); ?></span>
+                                                        <span
+                                                            class="badge bg-secondary"><?php echo htmlspecialchars($mgr['name']); ?></span>
                                                     <?php endforeach; ?>
                                                 </div>
                                             <?php else: ?>
@@ -99,17 +100,25 @@ $products = $product->getAllProducts();
                                 <?php endif; ?>
                             </td>
                             <td style="position:relative;">
-                                <button type="button" class="action-btn context-menu-btn" data-id="<?php echo $prod['product_id']; ?>">
+                                <button type="button" class="action-btn context-menu-btn"
+                                    data-id="<?php echo $prod['product_id']; ?>">
                                     <i class='bx bx-dots-vertical-rounded'></i>
                                 </button>
-                                <div class="context-menu" id="contextMenu<?php echo $prod['product_id']; ?>" style="display:none; position:absolute; right:0; top:40px; z-index:1000; min-width:180px; background:var(--paper); border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,0.12);">
-                                    <a href="javascript:void(0);" class="menu-item d-flex align-items-center gap-2" style="padding:10px 18px; text-decoration:none;" onclick="copyProductLink(<?php echo $prod['product_id']; ?>)">
+                                <div class="context-menu" id="contextMenu<?php echo $prod['product_id']; ?>"
+                                    style="display:none; position:absolute; right:0; top:40px; z-index:1000; min-width:180px; background:var(--paper); border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,0.12);">
+                                    <a href="javascript:void(0);" class="menu-item d-flex align-items-center gap-2"
+                                        style="padding:10px 18px; text-decoration:none;"
+                                        onclick="copyProductLink(<?php echo $prod['product_id']; ?>)">
                                         <i class='bx bx-link'></i> Share Product
                                     </a>
-                                    <a href="update.php?id=<?php echo $prod['product_id']; ?>" class="menu-item d-flex align-items-center gap-2" style="padding:10px 18px; color:var(--purple); text-decoration:none;">
+                                    <a href="update.php?id=<?php echo $prod['product_id']; ?>"
+                                        class="menu-item d-flex align-items-center gap-2"
+                                        style="padding:10px 18px; color:var(--purple); text-decoration:none;">
                                         <i class='bx bx-edit'></i> Update Product
                                     </a>
-                                    <button class="menu-item d-flex align-items-center gap-2" style="padding:10px 18px; color:#dc3545; background:none; border:none; width:100%; text-align:left; cursor:pointer;" onclick="deleteProduct(<?php echo $prod['product_id']; ?>)">
+                                    <button class="menu-item d-flex align-items-center gap-2"
+                                        style="padding:10px 18px; color:#dc3545; background:none; border:none; width:100%; text-align:left; cursor:pointer;"
+                                        onclick="deleteProduct(<?php echo $prod['product_id']; ?>)">
                                         <i class='bx bx-trash'></i> Delete Product
                                     </button>
                                 </div>
@@ -155,10 +164,10 @@ $products = $product->getAllProducts();
             }
         }
 
-        document.querySelectorAll('.context-menu-btn').forEach(function(btn) {
-            btn.addEventListener('click', function(e) {
+        document.querySelectorAll('.context-menu-btn').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
                 e.stopPropagation();
-                document.querySelectorAll('.context-menu').forEach(function(menu) {
+                document.querySelectorAll('.context-menu').forEach(function (menu) {
                     menu.style.display = 'none';
                 });
                 var menu = document.getElementById('contextMenu' + btn.getAttribute('data-id'));
@@ -166,8 +175,8 @@ $products = $product->getAllProducts();
             });
         });
 
-        document.addEventListener('click', function() {
-            document.querySelectorAll('.context-menu').forEach(function(menu) {
+        document.addEventListener('click', function () {
+            document.querySelectorAll('.context-menu').forEach(function (menu) {
                 menu.style.display = 'none';
             });
         });
