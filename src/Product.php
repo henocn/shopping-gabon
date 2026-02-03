@@ -204,7 +204,7 @@ class Product
     
     public function getProductCountries($productId)
     {
-        $req = $this->bd->prepare("SELECT c.id, c.code, c.name, pc.selling_price FROM countries c INNER JOIN product_countries pc ON c.id = pc.country_id WHERE pc.product_id = :product_id");
+        $req = $this->bd->prepare("SELECT c.id, c.code, c.name, c.phone_code, pc.selling_price FROM countries c INNER JOIN product_countries pc ON c.id = pc.country_id WHERE pc.product_id = :product_id");
         $req->execute(['product_id' => $productId]);
         return $req->fetchAll(PDO::FETCH_ASSOC);
     }
