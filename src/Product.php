@@ -197,7 +197,7 @@ class Product
     
     public function getProductManagers($productId)
     {
-        $req = $this->bd->prepare("SELECT u.id, u.name, u.email, u.country FROM users u INNER JOIN product_managers pm ON u.id = pm.manager_id WHERE pm.product_id = :product_id");
+        $req = $this->bd->prepare("SELECT u.id, u.name, u.email, c.code as country_code, c.name as country_name, pc.selling_price FROM users u INNER JOIN product_managers pm ON u.id = pm.manager_id LEFT JOIN countries c ON u.country = c.id LEFT JOIN product_countries pc ON pc.product_id = pm.product_id AND pc.country_id = u.country WHERE pm.product_id = :product_id");
         $req->execute(['product_id' => $productId]);
         return $req->fetchAll(PDO::FETCH_ASSOC);
     }

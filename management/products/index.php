@@ -1,4 +1,4 @@
-<?php
+update <?php
 
 require '../../vendor/autoload.php';
 require '../../utils/middleware.php';
@@ -78,10 +78,9 @@ $products = $product->getAllProducts();
                                     <?php foreach ($countries as $ctry): ?>
                                         <div style="margin-bottom: 8px;">
                                             <span class="badge bg-info"><?php echo htmlspecialchars($ctry['code']); ?> - <?php echo number_format($ctry['selling_price'], 0, ',', ' '); ?> FCFA</span>
-                                            <?php 
-                                                // Trouver les managers qui gèrent ce pays
+                                            <?php
                                                 $countryManagers = array_filter($managers, function($m) use ($ctry) {
-                                                    return $m['country'] === $ctry['code'];
+                                                    return $m['country_code'] === $ctry['code'];
                                                 });
                                             ?>
                                             <?php if (!empty($countryManagers)): ?>
@@ -138,17 +137,17 @@ $products = $product->getAllProducts();
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = 'save.php';
-                
+
                 const validerInput = document.createElement('input');
                 validerInput.type = 'hidden';
                 validerInput.name = 'valider';
                 validerInput.value = 'delete';
-                
+
                 const productIdInput = document.createElement('input');
                 productIdInput.type = 'hidden';
                 productIdInput.name = 'product_id';
                 productIdInput.value = productId;
-                
+
                 form.appendChild(validerInput);
                 form.appendChild(productIdInput);
                 document.body.appendChild(form);
