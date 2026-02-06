@@ -67,7 +67,7 @@ $texts = [
         'online_store' => 'Nous sommes une boutique en ligne',
         'buy_services' => 'Nous proposons des services d\'achat',
         'privacy' => 'Politique de confidentialité',
-        'copyright' => 'Tous les droits réservés © Maxora Market 2025',
+        'copyright' => 'Tous les droits réservés © luxemarket Market 2025',
         'lang_switch' => 'العربية',
         'phone_label' => 'Téléphone',
         'address_label' => 'Adresse'
@@ -87,7 +87,7 @@ $texts = [
         'online_store' => 'نحن متجر إلكتروني',
         'buy_services' => 'نقدم خدمات الشراء',
         'privacy' => 'سياسة الخصوصية',
-        'copyright' => 'جميع الحقوق محفوظة © Maxora Market 2025',
+        'copyright' => 'جميع الحقوق محفوظة © luxemarket Market 2025',
         'lang_switch' => 'Français',
         'phone_label' => 'هاتف',
         'address_label' => 'عنوان'
@@ -110,10 +110,10 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
     <meta property="og:title" content="<?= htmlspecialchars($displayTitle); ?>" />
     <meta property="og:description"
         content="<?= htmlspecialchars(substr(strip_tags($displayDescription), 0, 150)); ?>..." />
-    <meta property="og:image" content="https://maxora.cloud/uploads/main/<?= $product['image']; ?>" />
-    <meta property="og:url" content="https://maxora.cloud/index2.php?id=<?= $product['id'] ?>&lang=<?= $lang ?>" />
+    <meta property="og:image" content="https://luxemarket.cloud/uploads/main/<?= $product['image']; ?>" />
+    <meta property="og:url" content="https://luxemarket.cloud/index1.php?id=<?= $product['id'] ?>&lang=<?= $lang ?>" />
     <meta property="og:type" content="product" />
-    <meta property="og:site_name" content="MaxoraMarket" />
+    <meta property="og:site_name" content="luxemarketMarket" />
     <meta property="og:locale" content="<?= $lang === 'ar' ? 'ar_AR' : 'fr_FR' ?>" />
 
     <!-- Twitter Cards -->
@@ -121,8 +121,8 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
     <meta name="twitter:title" content="<?= htmlspecialchars($displayTitle); ?>" />
     <meta name="twitter:description"
         content="<?= htmlspecialchars(substr(strip_tags($displayDescription), 0, 150)); ?>..." />
-    <meta name="twitter:image" content="https://maxora.cloud/uploads/main/<?= $product['image']; ?>" />
-    <meta name="twitter:site" content="@MaxoraMarket" />
+    <meta name="twitter:image" content="https://luxemarket.cloud/uploads/main/<?= $product['image']; ?>" />
+    <meta name="twitter:site" content="@luxemarketMarket" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -155,7 +155,7 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
         <nav class="yc-navbar container">
             <div class="logo">
                 <a href="/" aria-label="home">
-                    <img src="<?= $basePath ?>/assets/images/logo.jpg" alt="TUBKAL MARKET">
+                    <img src="<?= $basePath ?>/assets/images/idx121.png" alt="TUBKAL MARKET">
                 </a>
             </div>
             <div class="corner">
@@ -248,7 +248,7 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
     <footer>
         <div class="columns container">
             <div class="column logo">
-                <img src="<?= $basePath ?>/assets/images/logo.jpg" alt="MAXORA MARKET" width="110" height="70">
+                <img src="<?= $basePath ?>/assets/images/logo.jpg" alt="luxemarket MARKET" width="110" height="70">
             </div>
             <div class="column">
                 <h1><?= $t['about'] ?></h1>
@@ -267,15 +267,22 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
             <p><strong><?= $t['copyright'] ?></strong></p>
         </div>
     </footer>
-     
-    <script src="<?= $basePath ?>/assets/js/tracking-manager.js"></script>
+
+    <script src="<?= $basePath ?>/assets/js/tracking-manager.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="<?= $basePath ?>/assets/js/bootstrap.bundle.min.js"></script>
     <script src="<?= $basePath ?>/assets/js/index2.js"></script>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            const safeTrack = function(eventName, eventData) {
+                if (typeof trackEvent === 'function') {
+                    trackEvent(eventName, eventData);
+                }
+            };
+
             setTimeout(function() {
-                trackEvent('QualifiedVisit', {
+                safeTrack('QualifiedVisit', {
                     content_ids: ['<?= $product['id']; ?>'],
                     content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
                     value: <?= $displayPrice; ?>,
@@ -283,7 +290,7 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
                 });
             }, 5000);
 
-            const orderForm = document.getElementById('orderForm');
+            const orderForm = document.querySelector('.express-checkout-form');
             const orderModal = document.getElementById('orderModal');
             let formStarted = false;
             let formSubmitted = false;
@@ -301,7 +308,7 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
                             formStarted = true;
                             formStartTime = Date.now();
 
-                            trackEvent('FormStarted', {
+                            safeTrack('FormStarted', {
                                 content_ids: ['<?= $product['id']; ?>'],
                                 content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
                                 value: <?= $displayPrice; ?>,
@@ -310,7 +317,7 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
 
                             abandonTimer = setTimeout(function() {
                                 if (formStarted && !formSubmitted) {
-                                    trackEvent('FormInactive', {
+                                    safeTrack('FormInactive', {
                                         content_ids: ['<?= $product['id']; ?>'],
                                         content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
                                         value: <?= $displayPrice; ?>,
@@ -329,7 +336,7 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
                                 const progressPercent = Math.round((fieldsCompleted / totalFields) * 100);
 
                                 if (progressPercent === 25) {
-                                    trackEvent('FormProgress25', {
+                                    safeTrack('FormProgress25', {
                                         content_ids: ['<?= $product['id']; ?>'],
                                         content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
                                         value: <?= $displayPrice; ?>,
@@ -337,7 +344,7 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
                                         progress: 25
                                     });
                                 } else if (progressPercent === 50) {
-                                    trackEvent('FormProgress50', {
+                                    safeTrack('FormProgress50', {
                                         content_ids: ['<?= $product['id']; ?>'],
                                         content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
                                         value: <?= $displayPrice; ?>,
@@ -345,7 +352,7 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
                                         progress: 50
                                     });
                                 } else if (progressPercent === 75) {
-                                    trackEvent('FormProgress75', {
+                                    safeTrack('FormProgress75', {
                                         content_ids: ['<?= $product['id']; ?>'],
                                         content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
                                         value: <?= $displayPrice; ?>,
@@ -353,7 +360,7 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
                                         progress: 75
                                     });
                                 } else if (progressPercent === 100) {
-                                    trackEvent('FormCompleted', {
+                                    safeTrack('FormCompleted', {
                                         content_ids: ['<?= $product['id']; ?>'],
                                         content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
                                         value: <?= $displayPrice; ?>,
@@ -368,7 +375,7 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
                             clearTimeout(abandonTimer);
                             abandonTimer = setTimeout(function() {
                                 if (formStarted && !formSubmitted) {
-                                    trackEvent('FormInactive', {
+                                    safeTrack('FormInactive', {
                                         content_ids: ['<?= $product['id']; ?>'],
                                         content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
                                         value: <?= $displayPrice; ?>,
@@ -381,7 +388,7 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
                     });
 
                     field.addEventListener('focus', function() {
-                        trackEvent('FormFieldFocus', {
+                        safeTrack('FormFieldFocus', {
                             content_ids: ['<?= $product['id']; ?>'],
                             content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
                             value: <?= $displayPrice; ?>,
@@ -398,7 +405,7 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
                         if (formStarted && !formSubmitted) {
                             const timeSpent = formStartTime ? Math.round((Date.now() - formStartTime) / 1000) : 0;
 
-                            trackEvent('FormAbandoned', {
+                            safeTrack('FormAbandoned', {
                                 content_ids: ['<?= $product['id']; ?>'],
                                 content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
                                 value: <?= $displayPrice; ?>,
@@ -414,7 +421,7 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
                     if (formStarted && !formSubmitted) {
                         const timeSpent = formStartTime ? Math.round((Date.now() - formStartTime) / 1000) : 0;
 
-                        trackEvent('FormAbandoned', {
+                        safeTrack('FormAbandoned', {
                             content_ids: ['<?= $product['id']; ?>'],
                             content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
                             value: <?= $displayPrice; ?>,
@@ -471,14 +478,15 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
                     }
 
                     // Envoyer uniquement l'événement Purchase (conseillé par Facebook)
-                    trackEvent('Purchase', purchasePayload);
+                    safeTrack('Purchase', purchasePayload);
                 });
             }
         });
 
         function openOrderForm() {
             // InitiateCheckout au clic sur bouton Commander (specs Facebook)
-            trackEvent('InitiateCheckout', {
+            if (typeof trackEvent === 'function') {
+                trackEvent('InitiateCheckout', {
                 content_ids: ['<?= $product['id']; ?>'],
                 contents: [{
                     'id': '<?= $product['id']; ?>',
@@ -488,12 +496,17 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
                 currency: 'XOF',
                 num_items: 1,
                 value: <?= $displayPrice; ?>
-            });
+                });
+            }
 
-            var modal = new bootstrap.Modal(document.getElementById('orderModal'));
-            modal.show();
+            var modalElement = document.getElementById('orderModal');
+            if (modalElement && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                var modal = new bootstrap.Modal(modalElement);
+                modal.show();
+            }
         }
-    </script>                                
+    </script>
+    
 </body>
 
 </html>
