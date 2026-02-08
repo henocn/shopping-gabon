@@ -42,6 +42,17 @@ if ($basePath === '/') {
     $basePath = '';
 }
 
+function countryCodeToFlagEntity($code)
+{
+    $code = strtoupper(trim($code));
+    if (!preg_match('/^[A-Z]{2}$/', $code)) {
+        return '';
+    }
+    $first = 127397 + ord($code[0]);
+    $second = 127397 + ord($code[1]);
+    return '&#' . $first . ';&#' . $second . ';';
+}
+
 // Récupérer le prix du pays (à partir de la première association)
 $productCountries = $productManager->getProductCountries($productId);
 $displayPrice = !empty($productCountries) ? $productCountries[0]['selling_price'] : 0;
@@ -197,8 +208,9 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
                         <div class="phone-input-wrapper">
                             <select name="client_country" class="form-control-country" required>
                                 <?php foreach ($productCountries as $ctry): ?>
+                                    <?php $flag = countryCodeToFlagEntity($ctry['code'] ?? ''); ?>
                                     <option value="<?= htmlspecialchars($ctry['id']); ?>">
-                                        <?= htmlspecialchars($ctry['phone_code']); ?>
+                                        <?= $flag ? $flag . ' ' : '' ?><?= htmlspecialchars($ctry['phone_code']); ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>

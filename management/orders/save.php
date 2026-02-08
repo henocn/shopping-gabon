@@ -53,7 +53,14 @@ if (isset($_POST['valider'])) {
                 }
                 if ($sellingPrice == 0) {
                     $_SESSION['order_message'] = "Une erreur est survenue lors de la passation de votre commande. Veuillez réessayer.";
-                    header("Location: ../../index2.php?id=" . $productId . "&lang=" . $lang);
+                    header("Location: ../../index.php?id=" . $productId . "&lang=" . $lang);
+                    exit;
+                }
+
+                $counter = isset($_POST['counter']) ? (int)$_POST['counter'] : 0;
+                if ($counter >= 2) {
+                    $_SESSION['order_message'] = "Vous avez atteint la limite de commandes pour ce produit.";
+                    header("Location: ../../index.php?id=" . $productId . "&lang=" . $lang . "&counter=" . $counter);
                     exit;
                 }
 
@@ -84,13 +91,14 @@ if (isset($_POST['valider'])) {
 
 
                 if ($orderManager->CreateOrder($data)) {
+                    $counter++;
                     $_SESSION['order_message'] = "Votre commande a été passée avec succès. Nous vous contacterons bientôt.";
                     // header("Location: ../../index.php?id=" . $productId);
-                    header("Location: ../../index2.php?id=" . $productId . "&lang=" . $lang);
+                    header("Location: ../../index.php?id=" . $productId . "&lang=" . $lang . "&counter=" . $counter);
                 } else {
                     $_SESSION['order_message'] = "Une erreur est survenue lors de la passation de votre commande. Veuillez réessayer.";
                     // header("Location: ../../index.php?id=" . $productId);
-                    header("Location: ../../index2.php?id=" . $productId . "&lang=" . $lang);
+                    header("Location: ../../index.php?id=" . $productId . "&lang=" . $lang);
                 }
             }
             break;
