@@ -307,72 +307,126 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
                 return '';
             }
 
-            function setCookie(name, value, days) {
-                let expires = '';
-                if (days) {
-                    const date = new Date();
-                    date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
-                    expires = '; expires=' + date.toUTCString();
+            function setCookie(name, value, maxAgeSeconds) {
+                let maxAge = '';
+                if (maxAgeSeconds) {
+                    maxAge = '; max-age=' + Math.max(0, Math.floor(maxAgeSeconds));
                 }
-                document.cookie = encodeURIComponent(name) + '=' + encodeURIComponent(value) + expires + '; path=/';
+                document.cookie = encodeURIComponent(name) + '=' + encodeURIComponent(value) + maxAge + '; path=/';
             }
 
-            function getOrderCount(id) {
-                const key = 'order_limit_' + id;
-                let localCount = 0;
+            function readOrderState(key) {
+                let stored = null;
                 try {
-                    localCount = safeParseInt(localStorage.getItem(key));
+                    stored = localStorage.getItem(key);
                 } catch (error) {
-                    localCount = 0;
+                    stored = null;
                 }
+
+                if (!stored) {
+                    return { count: 0, expiresAt: null };
+                }
+
+                try {
+                    const parsed = JSON.parse(stored);
+                    if (parsed && typeof parsed === 'object') {
+                        return {
+                            count: safeParseInt(parsed.count),
+                            expiresAt: typeof parsed.expiresAt === 'number' ? parsed.expiresAt : null,
+                            isLegacy: typeof parsed.expiresAt !== 'number'
+                        };
+                    }
+                    return { count: safeParseInt(parsed), expiresAt: null, isLegacy: true };
+                } catch (error) {
+                    return { count: safeParseInt(stored), expiresAt: null, isLegacy: true };
+                }
+            }
+
+            function getOrderCount(id, windowMs) {
+                const key = 'order_limit_' + id;
+                const state = readOrderState(key);
+                if (state.expiresAt && Date.now() > state.expiresAt) {
+                    try {
+                        localStorage.removeItem(key);
+                    } catch (error) {}
+                }
+                if (!state.expiresAt && state.count > 0 && state.isLegacy) {
+                    const seededExpiresAt = Date.now() + windowMs;
+                    try {
+                        localStorage.setItem(key, JSON.stringify({
+                            count: state.count,
+                            expiresAt: seededExpiresAt
+                        }));
+                    } catch (error) {}
+                    return Math.max(state.count, safeParseInt(getCookie(key)));
+                }
+
+                const localCount = state.expiresAt && Date.now() > state.expiresAt ? 0 : state.count;
                 const cookieCount = safeParseInt(getCookie(key));
                 return Math.max(localCount, cookieCount);
             }
 
-            function setOrderCount(id, count) {
+            function setOrderCount(id, count, windowMs) {
                 const key = 'order_limit_' + id;
+                const expiresAt = Date.now() + windowMs;
                 try {
-                    localStorage.setItem(key, String(count));
+                    localStorage.setItem(key, JSON.stringify({
+                        count: count,
+                        expiresAt: expiresAt
+                    }));
                 } catch (error) {}
-                setCookie(key, String(count), 365);
+                setCookie(key, String(count), windowMs / 1000);
             }
 
-            function getBlockedProducts() {
+            function getBlockedProducts(windowMs) {
                 try {
                     const stored = localStorage.getItem('order_limit_blocked_products');
-                    return stored ? JSON.parse(stored) : [];
+                    if (!stored) return [];
+                    const parsed = JSON.parse(stored);
+                    if (Array.isArray(parsed)) {
+                        return parsed;
+                    }
+                    if (!parsed || typeof parsed !== 'object') return [];
+                    if (parsed.expiresAt && Date.now() > parsed.expiresAt) {
+                        localStorage.removeItem('order_limit_blocked_products');
+                        return [];
+                    }
+                    return Array.isArray(parsed.ids) ? parsed.ids : [];
                 } catch (error) {
                     return [];
                 }
             }
 
-            function setBlockedProducts(list) {
+            function setBlockedProducts(list, windowMs) {
                 try {
-                    localStorage.setItem('order_limit_blocked_products', JSON.stringify(list));
+                    localStorage.setItem('order_limit_blocked_products', JSON.stringify({
+                        ids: list,
+                        expiresAt: Date.now() + windowMs
+                    }));
                 } catch (error) {}
             }
 
-            function markBlockedProduct(id) {
-                const blocked = getBlockedProducts();
+            function markBlockedProduct(id, windowMs) {
+                const blocked = getBlockedProducts(windowMs);
                 const normalizedId = String(id);
                 if (blocked.indexOf(normalizedId) === -1) {
                     blocked.push(normalizedId);
-                    setBlockedProducts(blocked);
+                    setBlockedProducts(blocked, windowMs);
                 }
             }
 
-            function isProductBlocked(id) {
-                const blocked = getBlockedProducts();
+            function isProductBlocked(id, windowMs) {
+                const blocked = getBlockedProducts(windowMs);
                 return blocked.indexOf(String(id)) !== -1;
             }
 
-            function applyLimitState(id, limit) {
-                const count = getOrderCount(id);
+            function applyLimitState(id, limit, windowMs) {
+                const count = getOrderCount(id, windowMs);
                 if (count >= limit) {
-                    markBlockedProduct(id);
+                    markBlockedProduct(id, windowMs);
                 }
 
-                if (isProductBlocked(id)) {
+                if (isProductBlocked(id, windowMs)) {
                     document.querySelectorAll('.commander-btn, .btn-submit-order').forEach(function(btn) {
                         btn.disabled = true;
                         btn.setAttribute('aria-disabled', 'true');
@@ -384,6 +438,7 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
             window.createOrderLimit = function(productId, options) {
                 const limit = options && options.limit ? options.limit : 2;
                 const doubleClickGuardMs = options && options.doubleClickGuardMs ? options.doubleClickGuardMs : 2500;
+                const windowMs = options && options.windowMs ? options.windowMs : 48 * 60 * 60 * 1000;
                 let lastSubmitAt = 0;
 
                 function canSubmit() {
@@ -393,25 +448,25 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
                     }
                     lastSubmitAt = now;
 
-                    if (getOrderCount(productId) >= limit || isProductBlocked(productId)) {
-                        applyLimitState(productId, limit);
+                    if (getOrderCount(productId, windowMs) >= limit || isProductBlocked(productId, windowMs)) {
+                        applyLimitState(productId, limit, windowMs);
                         return false;
                     }
                     return true;
                 }
 
                 function registerSubmit() {
-                    const nextCount = getOrderCount(productId) + 1;
-                    setOrderCount(productId, nextCount);
+                    const nextCount = getOrderCount(productId, windowMs) + 1;
+                    setOrderCount(productId, nextCount, windowMs);
                     if (nextCount >= limit) {
-                        markBlockedProduct(productId);
+                        markBlockedProduct(productId, windowMs);
                     }
-                    applyLimitState(productId, limit);
+                    applyLimitState(productId, limit, windowMs);
                 }
 
                 return {
                     applyLimitState: function() {
-                        applyLimitState(productId, limit);
+                        applyLimitState(productId, limit, windowMs);
                     },
                     canSubmit: canSubmit,
                     registerSubmit: registerSubmit
@@ -462,7 +517,8 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
             const productId = '<?= $product['id']; ?>';
             const orderLimitApi = window.createOrderLimit(productId, {
                 limit: 2,
-                doubleClickGuardMs: 2500
+                doubleClickGuardMs: 2500,
+                windowMs: 48 * 60 * 60 * 1000
             });
             orderLimitApi.applyLimitState();
 
