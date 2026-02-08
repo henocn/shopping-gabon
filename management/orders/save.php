@@ -57,13 +57,6 @@ if (isset($_POST['valider'])) {
                     exit;
                 }
 
-                $counter = isset($_POST['counter']) ? (int)$_POST['counter'] : 0;
-                if ($counter >= 2) {
-                    $_SESSION['order_message'] = "Vous avez atteint la limite de commandes pour ce produit.";
-                    header("Location: ../../index.php?id=" . $productId . "&lang=" . $lang . "&counter=" . $counter);
-                    exit;
-                }
-
                 // Récupérer le manager associé au produit dans le pays du client
                 $productManagers = $productManager->getProductManagers($productId);
                 $managerId = null;
@@ -91,10 +84,9 @@ if (isset($_POST['valider'])) {
 
 
                 if ($orderManager->CreateOrder($data)) {
-                    $counter++;
                     $_SESSION['order_message'] = "Votre commande a été passée avec succès. Nous vous contacterons bientôt.";
                     // header("Location: ../../index.php?id=" . $productId);
-                    header("Location: ../../index.php?id=" . $productId . "&lang=" . $lang . "&counter=" . $counter);
+                    header("Location: ../../index.php?id=" . $productId . "&lang=" . $lang);
                 } else {
                     $_SESSION['order_message'] = "Une erreur est survenue lors de la passation de votre commande. Veuillez réessayer.";
                     // header("Location: ../../index.php?id=" . $productId);

@@ -42,13 +42,6 @@ if ($basePath === '/') {
     $basePath = '';
 }
 
-if (isset($_GET['counter'])) {
-    $counter = (int)$_GET['counter'];
-} else {
-    $counter = 0;
-}
-
-$isOrderDisabled = $counter >= 2;
 
 function countryCodeToFlagEntity($code)
 {
@@ -117,7 +110,7 @@ $t = $texts[$lang];
 
 // Déterminer le lien de changement de langue
 $otherLang = $lang === 'ar' ? 'fr' : 'ar';
-$langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang . '&counter=' . $counter;
+$langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
 ?>
 <!DOCTYPE html>
 <html lang="<?= $lang ?>">
@@ -181,8 +174,7 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang . '&counter=' . $co
                 <a href="<?= $langSwitchUrl ?>" style="margin-right: 10px; text-decoration: none; color: inherit;">
                     <?= $t['lang_switch'] ?>
                 </a>
-                <button class="commander-btn" onclick="location.href='#product_details'"
-                    <?= $isOrderDisabled ? 'disabled aria-disabled="true"' : '' ?>>
+                <button class="commander-btn" onclick="location.href='#product_details'">
                     <?= $t['commander'] ?>
                 </button>
             </div>
@@ -235,11 +227,10 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang . '&counter=' . $co
 
                         <input type="hidden" name="product_id" value="<?= $product['id']; ?>">
                         <input type="hidden" name="lang" value="<?= $lang; ?>">
-                        <input type="hidden" name="counter" id="counterInput" value="<?= $counter; ?>">
                         <input type="hidden" name="valider" value="commander">
                     </div>
                     <div class="modal-footer-custom">
-                        <button type="submit" class="btn-submit-order" <?= $isOrderDisabled ? 'disabled aria-disabled="true"' : '' ?>>
+                        <button type="submit" class="btn-submit-order">
                             <i class='bx bx-check-circle'></i>
                             <span><?= $t['order_button_text'] ?></span>
                         </button>
@@ -298,6 +289,138 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang . '&counter=' . $co
     <script src="<?= $basePath ?>/assets/js/index2.js"></script>
 
     <script>
+        (function() {
+            function safeParseInt(value) {
+                const parsed = parseInt(value, 10);
+                return Number.isNaN(parsed) ? 0 : parsed;
+            }
+
+            function getCookie(name) {
+                const cookies = document.cookie ? document.cookie.split('; ') : [];
+                for (let i = 0; i < cookies.length; i += 1) {
+                    const parts = cookies[i].split('=');
+                    const key = decodeURIComponent(parts.shift());
+                    if (key === name) {
+                        return decodeURIComponent(parts.join('='));
+                    }
+                }
+                return '';
+            }
+
+            function setCookie(name, value, days) {
+                let expires = '';
+                if (days) {
+                    const date = new Date();
+                    date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
+                    expires = '; expires=' + date.toUTCString();
+                }
+                document.cookie = encodeURIComponent(name) + '=' + encodeURIComponent(value) + expires + '; path=/';
+            }
+
+            function getOrderCount(id) {
+                const key = 'order_limit_' + id;
+                let localCount = 0;
+                try {
+                    localCount = safeParseInt(localStorage.getItem(key));
+                } catch (error) {
+                    localCount = 0;
+                }
+                const cookieCount = safeParseInt(getCookie(key));
+                return Math.max(localCount, cookieCount);
+            }
+
+            function setOrderCount(id, count) {
+                const key = 'order_limit_' + id;
+                try {
+                    localStorage.setItem(key, String(count));
+                } catch (error) {}
+                setCookie(key, String(count), 365);
+            }
+
+            function getBlockedProducts() {
+                try {
+                    const stored = localStorage.getItem('order_limit_blocked_products');
+                    return stored ? JSON.parse(stored) : [];
+                } catch (error) {
+                    return [];
+                }
+            }
+
+            function setBlockedProducts(list) {
+                try {
+                    localStorage.setItem('order_limit_blocked_products', JSON.stringify(list));
+                } catch (error) {}
+            }
+
+            function markBlockedProduct(id) {
+                const blocked = getBlockedProducts();
+                const normalizedId = String(id);
+                if (blocked.indexOf(normalizedId) === -1) {
+                    blocked.push(normalizedId);
+                    setBlockedProducts(blocked);
+                }
+            }
+
+            function isProductBlocked(id) {
+                const blocked = getBlockedProducts();
+                return blocked.indexOf(String(id)) !== -1;
+            }
+
+            function applyLimitState(id, limit) {
+                const count = getOrderCount(id);
+                if (count >= limit) {
+                    markBlockedProduct(id);
+                }
+
+                if (isProductBlocked(id)) {
+                    document.querySelectorAll('.commander-btn, .btn-submit-order').forEach(function(btn) {
+                        btn.disabled = true;
+                        btn.setAttribute('aria-disabled', 'true');
+                        btn.style.display = 'none';
+                    });
+                }
+            }
+
+            window.createOrderLimit = function(productId, options) {
+                const limit = options && options.limit ? options.limit : 2;
+                const doubleClickGuardMs = options && options.doubleClickGuardMs ? options.doubleClickGuardMs : 2500;
+                let lastSubmitAt = 0;
+
+                function canSubmit() {
+                    const now = Date.now();
+                    if (now - lastSubmitAt < doubleClickGuardMs) {
+                        return false;
+                    }
+                    lastSubmitAt = now;
+
+                    if (getOrderCount(productId) >= limit || isProductBlocked(productId)) {
+                        applyLimitState(productId, limit);
+                        return false;
+                    }
+                    return true;
+                }
+
+                function registerSubmit() {
+                    const nextCount = getOrderCount(productId) + 1;
+                    setOrderCount(productId, nextCount);
+                    if (nextCount >= limit) {
+                        markBlockedProduct(productId);
+                    }
+                    applyLimitState(productId, limit);
+                }
+
+                return {
+                    applyLimitState: function() {
+                        applyLimitState(productId, limit);
+                    },
+                    canSubmit: canSubmit,
+                    registerSubmit: registerSubmit
+                };
+            };
+        })();
+    </script>
+
+    <script>
         function trackWhenReady(eventName, eventData, attempts) {
             var defaultAttemptsByEvent = {
                 Purchase: 40,
@@ -335,6 +458,13 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang . '&counter=' . $co
                     currency: 'XOF'
                 });
             }, 5000);
+
+            const productId = '<?= $product['id']; ?>';
+            const orderLimitApi = window.createOrderLimit(productId, {
+                limit: 2,
+                doubleClickGuardMs: 2500
+            });
+            orderLimitApi.applyLimitState();
 
             const orderForm = document.querySelector('.express-checkout-form');
             const orderModal = document.getElementById('orderModal');
@@ -478,6 +608,13 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang . '&counter=' . $co
                 });
 
                 orderForm.addEventListener('submit', function(e) {
+                    if (!orderLimitApi.canSubmit()) {
+                        e.preventDefault();
+                        return;
+                    }
+
+                    orderLimitApi.registerSubmit();
+
                     formSubmitted = true;
                     e.preventDefault();
 
