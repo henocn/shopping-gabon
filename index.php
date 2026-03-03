@@ -11,8 +11,6 @@ $productManager = new Product($cnx);
 $countryManager = new Country($cnx);
 
 
-$lang = isset($_GET['lang']) && $_GET['lang'] === 'ar' ? 'ar' : 'fr';
-
 if (!isset($_GET['id'])) {
     $product = $productManager->getRandomProduct();
     $productId = intval($product['product_id']);
@@ -58,62 +56,11 @@ function countryCodeToFlagEntity($code)
 $productCountries = $productManager->getProductCountries($productId);
 $displayPrice = !empty($productCountries) ? $productCountries[0]['selling_price'] : 0;
 
-// Sélectionner le titre et la description selon la langue
-$displayTitle = $lang === 'ar' && !empty($product['ar_name']) ? $product['ar_name'] : $product['name'];
-$displayDescription = $lang === 'ar' && !empty($product['ar_description']) ? $product['ar_description'] : $product['description'];
-
-// Textes statiques selon la langue
-$texts = [
-    'fr' => [
-        'commander' => 'Commander',
-        'order_button' => 'Valider la commande',
-        'order_button_text' => 'Valider la commande',
-        'fullname' => 'Nom complet',
-        'number' => 'Numéro',
-        'address' => 'Ville, Quartier',
-        'note' => 'Note éventuelle',
-        'about' => 'À propos',
-        'about_us' => 'À propos de nous',
-        'payment' => 'Modes de paiement',
-        'shipping' => 'Livraison',
-        'online_store' => 'Nous sommes une boutique en ligne',
-        'buy_services' => 'Nous proposons des services d\'achat',
-        'privacy' => 'Politique de confidentialité',
-        'copyright' => 'Tous les droits réservés © luxemarket Market 2025',
-        'lang_switch' => 'العربية',
-        'phone_label' => 'Téléphone',
-        'address_label' => 'Adresse'
-    ],
-    'ar' => [
-        'commander' => 'اطلب الآن',
-        'order_button' => 'تأكيد الطلب',
-        'order_button_text' => 'تأكيد الطلب',
-        'fullname' => 'الاسم الكامل',
-        'number' => 'الرقم',
-        'address' => 'المدينة، الحي',
-        'note' => 'ملاحظة اختيارية',
-        'about' => 'حول',
-        'about_us' => 'حول متجرنا',
-        'payment' => 'طرق الدفع',
-        'shipping' => 'التوصيل',
-        'online_store' => 'نحن متجر إلكتروني',
-        'buy_services' => 'نقدم خدمات الشراء',
-        'privacy' => 'سياسة الخصوصية',
-        'copyright' => 'جميع الحقوق محفوظة © luxemarket Market 2025',
-        'lang_switch' => 'Français',
-        'phone_label' => 'هاتف',
-        'address_label' => 'عنوان'
-    ]
-];
-
-$t = $texts[$lang];
-
-// Déterminer le lien de changement de langue
-$otherLang = $lang === 'ar' ? 'fr' : 'ar';
-$langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
+$displayTitle = $product['name'];
+$displayDescription = $product['description'];
 ?>
 <!DOCTYPE html>
-<html lang="<?= $lang ?>">
+<html lang="fr">
 
 <head>
     <meta charset="UTF-8">
@@ -123,10 +70,10 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
     <meta property="og:description"
         content="<?= htmlspecialchars(substr(strip_tags($displayDescription), 0, 150)); ?>..." />
     <meta property="og:image" content="https://luxemarket.cloud/uploads/main/<?= $product['image']; ?>" />
-    <meta property="og:url" content="https://luxemarket.cloud/index1.php?id=<?= $product['id'] ?>&lang=<?= $lang ?>" />
+    <meta property="og:url" content="https://luxemarket.cloud/index.php?id=<?= $product['id'] ?>" />
     <meta property="og:type" content="product" />
     <meta property="og:site_name" content="luxemarketMarket" />
-    <meta property="og:locale" content="<?= $lang === 'ar' ? 'ar_AR' : 'fr_FR' ?>" />
+    <meta property="og:locale" content="fr_FR" />
 
     <!-- Twitter Cards -->
     <meta name="twitter:card" content="summary_large_image" />
@@ -139,29 +86,10 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Almarai:wght@300;400;500;700&display=swap">
-    <link rel="stylesheet" href="<?= $basePath ?>/assets/css/index2.css">
-    <?php if ($lang === 'ar'): ?>
-        <style>
-            body {
-                direction: rtl;
-            }
-
-            .yc-navbar {
-                flex-direction: row-reverse;
-            }
-
-            .corner {
-                order: -1;
-            }
-
-            .product-layout {
-                flex-direction: row-reverse;
-            }
-        </style>
-    <?php endif; ?>
+    <link rel="stylesheet" href="<?= $basePath ?>/assets/css/index.css">
 </head>
 
-<body>
+<body class="page-storefront">
 
     <header class="yc-header">
         <nav class="yc-navbar container">
@@ -171,12 +99,7 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
                 </a>
             </div>
             <div class="corner">
-                <a href="<?= $langSwitchUrl ?>" style="margin-right: 10px; text-decoration: none; color: inherit;">
-                    <?= $t['lang_switch'] ?>
-                </a>
-                <button class="commander-btn" onclick="location.href='#product_details'">
-                    <?= $t['commander'] ?>
-                </button>
+                <button class="commander-btn" onclick="location.href='#product_details'">Commander</button>
             </div>
         </nav>
     </header>
@@ -207,7 +130,7 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
                 <form class="express-checkout-form" method="POST" action="management/orders/save.php">
                     <div class="express-checkout-fields">
                         <input type="text" name="client_name" class="form-control-custom"
-                            placeholder="<?= $t['fullname'] ?>" required>
+                            placeholder="Nom complet" required>
                         <div class="phone-input-wrapper">
                             <select name="client_country" class="form-control-country" required>
                                 <?php foreach ($productCountries as $ctry): ?>
@@ -218,21 +141,20 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
                                 <?php endforeach; ?>
                             </select>
                             <input type="tel" name="client_phone" class="form-control-custom"
-                                placeholder="<?= $t['number'] ?>" required>
+                                placeholder="Numéro" required>
                         </div>
                         <input type="text" name="client_adress" class="form-control-custom"
-                            placeholder="<?= $t['address'] ?>" required>
+                            placeholder="Ville, Quartier" required>
                         <textarea name="client_note" class="form-control-custom" rows="2"
-                            placeholder="<?= $t['note'] ?>"></textarea>
+                            placeholder="Note éventuelle"></textarea>
 
                         <input type="hidden" name="product_id" value="<?= $product['id']; ?>">
-                        <input type="hidden" name="lang" value="<?= $lang; ?>">
                         <input type="hidden" name="valider" value="commander">
                     </div>
                     <div class="modal-footer-custom">
                         <button type="submit" class="btn-submit-order">
                             <i class='bx bx-check-circle'></i>
-                            <span><?= $t['order_button_text'] ?></span>
+                            <span>Valider la commande</span>
                         </button>
                     </div>
                 </form>
@@ -266,27 +188,27 @@ $langSwitchUrl = '?id=' . $productId . '&lang=' . $otherLang;
                 <img src="<?= $basePath ?>/assets/images/logo.jpg" alt="luxemarket MARKET" width="110" height="70">
             </div>
             <div class="column">
-                <h1><?= $t['about'] ?></h1>
-                <a href="#"><?= $t['about_us'] ?></a>
-                <a href="#"><?= $t['payment'] ?></a>
-                <a href="#"><?= $t['shipping'] ?></a>
+                <h1>À propos</h1>
+                <a href="#">À propos de nous</a>
+                <a href="#">Modes de paiement</a>
+                <a href="#">Livraison</a>
             </div>
             <div class="column">
-                <h1><?= $t['about'] ?></h1>
-                <h5><?= $t['online_store'] ?></h5>
-                <h5><?= $t['buy_services'] ?></h5>
-                <h5><?= $t['privacy'] ?></h5>
+                <h1>À propos</h1>
+                <h5>Nous sommes une boutique en ligne</h5>
+                <h5>Nous proposons des services d'achat</h5>
+                <h5>Politique de confidentialité</h5>
             </div>
         </div>
         <div class="copyright-wrapper">
-            <p><strong><?= $t['copyright'] ?></strong></p>
+            <p><strong>Tous les droits réservés © luxemarket Market 2025</strong></p>
         </div>
     </footer>
 
     <script src="<?= $basePath ?>/assets/js/tracking-manager.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="<?= $basePath ?>/assets/js/bootstrap.bundle.min.js"></script>
-    <script src="<?= $basePath ?>/assets/js/index2.js"></script>
+    <script src="<?= $basePath ?>/assets/js/index.js"></script>
 
     <script>
         (function() {

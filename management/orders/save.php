@@ -32,7 +32,6 @@ if (isset($_POST['valider'])) {
 
                 $packId = !empty($_POST['pack_id']) ? htmlspecialchars($_POST['pack_id']) : null;
                 $productId = htmlspecialchars($_POST['product_id']);
-                $lang = isset($_POST['lang']) && $_POST['lang'] != '' ? $_POST['lang'] : 'fr';
 
                 if($packId != null) {
                     $pack = $packManager->getPackById($packId);
@@ -53,7 +52,7 @@ if (isset($_POST['valider'])) {
                 }
                 if ($sellingPrice == 0) {
                     $_SESSION['order_message'] = "Une erreur est survenue lors de la passation de votre commande. Veuillez réessayer.";
-                    header("Location: ../../index.php?id=" . $productId . "&lang=" . $lang);
+                    header("Location: ../../index.php?id=" . $productId);
                     exit;
                 }
 
@@ -85,12 +84,10 @@ if (isset($_POST['valider'])) {
 
                 if ($orderManager->CreateOrder($data)) {
                     $_SESSION['order_message'] = "Votre commande a été passée avec succès. Nous vous contacterons bientôt.";
-                    // header("Location: ../../index.php?id=" . $productId);
-                    header("Location: ../../index.php?id=" . $productId . "&lang=" . $lang);
+                    header("Location: ../../index.php?id=" . $productId);
                 } else {
                     $_SESSION['order_message'] = "Une erreur est survenue lors de la passation de votre commande. Veuillez réessayer.";
-                    // header("Location: ../../index.php?id=" . $productId);
-                    header("Location: ../../index.php?id=" . $productId . "&lang=" . $lang);
+                    header("Location: ../../index.php?id=" . $productId);
                 }
             }
             break;

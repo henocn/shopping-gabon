@@ -182,7 +182,7 @@ if ($basePath === '/') {
     <script src="<?= $basePath ?>/assets/js/tracking-manager.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="<?= $basePath ?>/assets/js/bootstrap.bundle.min.js"></script>
-    <script src="<?= $basePath ?>/assets/js/index2.js"></script>
+    <script src="<?= $basePath ?>/assets/js/index.js"></script>
 
     <script>
         // Quantity controls
@@ -204,7 +204,7 @@ if ($basePath === '/') {
     </script>
 
     <script>
-        // Tracking interaction du formulaire produit (adapté à la page index2)
+        // Tracking interaction du formulaire produit
         document.addEventListener('DOMContentLoaded', function() {
             const safeTrack = (name, payload) => {
                 if (typeof trackEvent === 'function') {
