@@ -15,7 +15,7 @@ $cnx = Connectbd::getConnection();
 $manager = new Product($cnx);
 
 $userManager = new User($cnx);
-$helpers = $userManager->getUsersByRole(0);
+$helpers = $userManager->getUsersByRoleWithIndicatif(0);
 
 // Récupérer la liste des pays
 $countryStmt = $cnx->prepare("SELECT id, code, name FROM countries ORDER BY name ASC");
@@ -117,7 +117,7 @@ $productCountries = $manager->getProductCountries($productId);
                             <?php
                             $selectedManagerIds = array_column($productManagers, 'id');
                             foreach ($helpers as $helper) { ?>
-                                <option value="<?= $helper['id'] ?>" <?= in_array($helper['id'], $selectedManagerIds) ? 'selected' : '' ?>><?= $helper['name'] ?> (<?= $helper['country'] ?>)</option>
+                                <option value="<?= (int)$helper['id'] ?>" <?= in_array($helper['id'], $selectedManagerIds) ? 'selected' : '' ?>><?= htmlspecialchars($helper['name']) ?> (<?= htmlspecialchars($helper['country_name'] ?: '—') ?>)</option>
                             <?php } ?>
                         </select>
                         <small class="form-text text-muted">Maintenez Ctrl (Cmd sur Mac) pour sélectionner plusieurs assistants</small>

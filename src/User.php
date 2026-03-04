@@ -75,6 +75,23 @@ class User
         return $sql->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /**
+     * Retourne les utilisateurs par rôle avec le nom du pays et l'indicatif téléphonique (pour les selects manager).
+     */
+    public function getUsersByRoleWithIndicatif($role): array
+    {
+        $sql = $this->bd->prepare("
+            SELECT u.id, u.email, u.name, u.role, u.country, u.is_active,
+                   c.name AS country_name, COALESCE(c.phone_code, '') AS phone_code
+            FROM users u
+            LEFT JOIN countries c ON u.country = c.id
+            WHERE u.role = :role
+            ORDER BY u.name
+        ");
+        $sql->execute(["role" => $role]);
+        return $sql->fetchAll(PDO::FETCH_ASSOC);
+    }
+
 
     public function email_exists($email): bool
     {

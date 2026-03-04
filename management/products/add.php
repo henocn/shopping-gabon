@@ -11,7 +11,7 @@ use src\User;
 
 $cnx = Connectbd::getConnection();
 $userManager = new User($cnx);
-$helpers = $userManager->getUsersByRole(0);
+$helpers = $userManager->getUsersByRoleWithIndicatif(0);
 
 // Récupérer la liste des pays
 $countryStmt = $cnx->prepare("SELECT id, code, name FROM countries ORDER BY name ASC");
@@ -103,7 +103,7 @@ $countries = $countryStmt->fetchAll(PDO::FETCH_ASSOC);
                         <select class="form-select" name="manager_ids[]" multiple required>
                             <?php
                             foreach ($helpers as $helper) { ?>
-                                <option value=<?= $helper['id'] ?>><?= $helper['name'] ?> (<?= $helper['country'] ?>)</option>
+                                <option value="<?= (int)$helper['id'] ?>"><?= htmlspecialchars($helper['name']) ?> (<?= htmlspecialchars($helper['country_name'] ?: '—') ?>)</option>
                             <?php } ?>
                         </select>
                         <small class="form-text text-muted">Maintenez Ctrl (Cmd sur Mac) pour sélectionner plusieurs assistants</small>
