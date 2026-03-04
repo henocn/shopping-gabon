@@ -551,85 +551,87 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
 
       <?php include '../../includes/footer.php'; ?>
 
+      <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
       <script src="../../assets/js/bootstrap.bundle.min.js"></script>
-      <script src="../../assets/js/order.js"></script>
-      <script src="../../assets/js/reload.js"></script>
+      <script src="../../assets/js/ordering-alert.js"></script>
       <script src="../../assets/js/filter-orders.js"></script>
 
       <script>
             let currentDeliveryContext = null;
             let deliveryModalConfirming = false;
 
-            // Gérer le clic sur le bouton Enregistrer du modal principal
-            document.querySelectorAll('[id^="submitBtn"]').forEach(button => {
-                  button.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
+            function initOrderInteractions() {
+                  // Boutons "Enregistrer" dans les modals
+                  document.querySelectorAll('[id^="submitBtn"]').forEach(button => {
+                        button.addEventListener('click', function(e) {
+                              e.preventDefault();
+                              e.stopPropagation();
 
-                        const orderId = this.id.replace('submitBtn', '');
-                        const form = document.getElementById('orderForm' + orderId);
-                        const selectedAction = document.getElementById('actionSelect' + orderId).value;
+                              const orderId = this.id.replace('submitBtn', '');
+                              const form = document.getElementById('orderForm' + orderId);
+                              const selectedAction = document.getElementById('actionSelect' + orderId).value;
 
-                        if (selectedAction === 'deliver') {
+                              if (selectedAction === 'deliver') {
+                                    currentDeliveryContext = {
+                                          type: 'modal',
+                                          orderId: orderId
+                                    };
+
+                                    const mainModalElement = document.getElementById('orderModal' + orderId);
+                                    const mainModal = bootstrap.Modal.getInstance(mainModalElement);
+                                    if (mainModal) {
+                                          mainModal.hide();
+                                    }
+
+                                    setTimeout(() => {
+                                          const deliveryModalElement = document.getElementById('deliveryFeeModal' + orderId);
+                                          if (deliveryModalElement) {
+                                                const feeInput = document.getElementById('deliveryFeeInput' + orderId);
+                                                if (feeInput) {
+                                                      feeInput.value = '0';
+                                                      feeInput.focus();
+                                                }
+                                                const existingModal = bootstrap.Modal.getInstance(deliveryModalElement);
+                                                const deliveryModal = existingModal || new bootstrap.Modal(deliveryModalElement);
+                                                deliveryModal.show();
+                                                attachDeliveryModalHandler(orderId, deliveryModalElement);
+                                          }
+                                    }, 250);
+                              } else {
+                                    form.submit();
+                              }
+                        });
+                  });
+
+                  // Boutons rapides "Livrer"
+                  document.querySelectorAll('.quick-deliver-btn').forEach(button => {
+                        button.addEventListener('click', function(e) {
+                              e.preventDefault();
+                              e.stopPropagation();
+
+                              const orderId = this.dataset.orderId;
                               currentDeliveryContext = {
-                                    type: 'modal',
+                                    type: 'quick',
                                     orderId: orderId
                               };
 
-                              const mainModalElement = document.getElementById('orderModal' + orderId);
-                              const mainModal = bootstrap.Modal.getInstance(mainModalElement);
-                              if (mainModal) {
-                                    mainModal.hide();
-                              }
-
-                              setTimeout(() => {
-                                    const deliveryModalElement = document.getElementById('deliveryFeeModal' + orderId);
-                                    if (deliveryModalElement) {
-                                          const feeInput = document.getElementById('deliveryFeeInput' + orderId);
-                                          if (feeInput) {
-                                                feeInput.value = '0';
-                                                feeInput.focus();
-                                          }
-                                          const existingModal = bootstrap.Modal.getInstance(deliveryModalElement);
-                                          const deliveryModal = existingModal || new bootstrap.Modal(deliveryModalElement);
-                                          deliveryModal.show();
-                                          attachDeliveryModalHandler(orderId, deliveryModalElement);
+                              const deliveryModalElement = document.getElementById('deliveryFeeModal' + orderId);
+                              if (deliveryModalElement) {
+                                    const feeInput = document.getElementById('deliveryFeeInput' + orderId);
+                                    if (feeInput) {
+                                          feeInput.value = '0';
+                                          feeInput.focus();
                                     }
-                              }, 250);
-                        } else {
-                              form.submit();
-                        }
-                  });
-            });
-
-            // Boutons rapides "Livrer"
-            document.querySelectorAll('.quick-deliver-btn').forEach(button => {
-                  button.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-
-                        const orderId = this.dataset.orderId;
-                        currentDeliveryContext = {
-                              type: 'quick',
-                              orderId: orderId
-                        };
-
-                        const deliveryModalElement = document.getElementById('deliveryFeeModal' + orderId);
-                        if (deliveryModalElement) {
-                              const feeInput = document.getElementById('deliveryFeeInput' + orderId);
-                              if (feeInput) {
-                                    feeInput.value = '0';
-                                    feeInput.focus();
+                                    const existingModal = bootstrap.Modal.getInstance(deliveryModalElement);
+                                    const deliveryModal = existingModal || new bootstrap.Modal(deliveryModalElement);
+                                    deliveryModal.show();
+                                    attachDeliveryModalHandler(orderId, deliveryModalElement);
                               }
-                              const existingModal = bootstrap.Modal.getInstance(deliveryModalElement);
-                              const deliveryModal = existingModal || new bootstrap.Modal(deliveryModalElement);
-                              deliveryModal.show();
-                              attachDeliveryModalHandler(orderId, deliveryModalElement);
-                        }
+                        });
                   });
-            });
+            }
 
-            // Confirmer la livraison avec les frais
+            // Confirmer la livraison avec les frais (inchangé)
             function confirmDelivery(orderId) {
                   const feeInput = document.getElementById('deliveryFeeInput' + orderId);
                   const deliveryFee = feeInput ? parseInt(feeInput.value || '0', 10) : 0;
@@ -695,12 +697,28 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
 
                   modalElement.dataset.handlerAttached = '1';
             }
-      </script>
 
-      <script>
-            setInterval(function() {
-                  location.reload();
-            }, 1000 * 60);
+            // Chargement silencieux des commandes avec jQuery
+            function refreshOrdersSilently() {
+                  $.get(window.location.href, function(html) {
+                        const $html = $(html);
+                        const $newTabs = $html.find('#ordersTabs');
+                        const $newContent = $html.find('#ordersTabsContent');
+
+                        if ($newTabs.length) {
+                              $('#ordersTabs').replaceWith($newTabs);
+                        }
+                        if ($newContent.length) {
+                              $('#ordersTabsContent').replaceWith($newContent);
+                        }
+                        initOrderInteractions();
+                  });
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                  initOrderInteractions();
+                  setInterval(refreshOrdersSilently, 60 * 1000);
+            });
       </script>
 
 </body>
