@@ -1,4 +1,4 @@
-<footer class="footer mt-auto pt-4 pb-0 purple-bg paper-color">
+<footer class="footer mt-auto pt-4 pb-0 primary-bg paper-color">
   <div class="container">
     <div class="row">
       <div class="col-md-4 mb-4">
