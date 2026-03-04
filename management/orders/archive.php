@@ -49,30 +49,11 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
             
             <!-- En-tête avec bouton retour -->
             <div class="d-flex justify-content-between align-items-center mb-4">
-                  <h4>
-                        <i class='bx bx-archive me-2'></i>
-                        Archives des Commandes Livrées
-                  </h4>
-                  <a href="index.php" class="btn btn-outline-secondary">
-                        <i class='bx bx-arrow-back me-2'></i>Retour aux commandes
+                  <h4>Livraisons archives : <?= count($deliveredOrders) ?> </h4>
+                  <a href="index.php" class="btn btn-order-primary border-1 border-black rounded-3">
+                        <i class='bx bx-arrow-back me-2'></i>Retour
                   </a>
             </div>
-
-            <!-- Statistiques -->
-            <div class="row">
-                  <div class="col-md-4">
-                        <div class="stats-card">
-                              <h5><i class='bx bx-package me-2'></i>Total</h5>
-                              <h4><?= count($deliveredOrders) ?></h4>
-                        </div>
-                  </div>
-            </div>
-
-            <!-- Barre de recherche -->
-            <div class="search-box">
-                  <input type="text" id="searchInput" class="form-control" placeholder="Rechercher par client, téléphone, produit...">
-            </div>
-
             <!-- Tableau des commandes livrées -->
             <div class="table-container">
                   <?php if (empty($deliveredOrders)): ?>
@@ -82,7 +63,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                         </div>
                   <?php else: ?>
                         <div class="table-responsive">
-                              <table class="table table-hover" id="ordersTable">
+                              <table class="table table-bordered" id="orders-delivered-table">
                                     <thead>
                                           <tr>
                                                 <th scope="col">ID</th>
@@ -122,24 +103,6 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
       <?php include '../../includes/footer.php'; ?>
 
       <script src="../../assets/js/bootstrap.bundle.min.js"></script>
-      <script>
-            // Fonction de recherche
-            document.getElementById('searchInput').addEventListener('keyup', function() {
-                  const searchTerm = this.value.toLowerCase();
-                  const tableRows = document.querySelectorAll('#ordersTable tbody tr');
-                  
-                  tableRows.forEach(row => {
-                        const text = row.textContent.toLowerCase();
-                        row.style.display = text.includes(searchTerm) ? '' : 'none';
-                  });
-            });
-
-            // Initialiser les tooltips Bootstrap
-            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                  return new bootstrap.Tooltip(tooltipTriggerEl);
-            });
-      </script>
 
 </body>
 

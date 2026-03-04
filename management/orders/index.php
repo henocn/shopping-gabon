@@ -393,7 +393,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
       <?php foreach ($orders as $order): ?>
             <?php $modalId = 'orderModal' . (int)$order['order_id']; ?>
             <div class="modal fade" id="<?= $modalId ?>" tabindex="-1" aria-labelledby="<?= $modalId ?>Label" aria-hidden="true">
-                  <div class="modal-dialog">
+                  <div class="modal-dialog modal-dialog-centered admin-order-modal">
                         <div class="modal-content">
                               <div class="modal-header py-2">
                                     <h6 class="modal-title mb-0" id="<?= $modalId ?>Label">
@@ -411,14 +411,21 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                 </div>
                                           <?php endif; ?>
 
-                                          <div class="row">
-                                                <div class="col-6">
+                                          <div class="order-modal-summary">
+                                                <div class="d-flex flex-column flex-sm-row justify-content-between gap-1">
+                                                      <span><strong><?= htmlspecialchars($order['client_name']) ?></strong> (<?= htmlspecialchars($order['client_phone']) ?>)</span>
+                                                      <span class="text-muted">Produit : <strong><?= htmlspecialchars($order['product_name']) ?></strong></span>
+                                                </div>
+                                          </div>
+
+                                          <div class="row g-2">
+                                                <div class="col-12 col-md-6">
                                                       <div class="mb-2">
                                                             <label for="modalQuantity<?= $order['order_id'] ?>" class="form-label mb-1 small fw-bold">Quantité</label>
                                                             <input type="number" class="form-control form-control-sm" id="modalQuantity<?= $order['order_id'] ?>" name="quantity" value="<?= (int)$order['quantity'] ?>" min="1" required>
                                                       </div>
                                                 </div>
-                                                <div class="col-6">
+                                                <div class="col-12 col-md-6">
                                                       <div class="mb-2">
                                                             <label for="modalTotal<?= $order['order_id'] ?>" class="form-label mb-1 small fw-bold">Prix (FCFA)</label>
                                                             <input type="number" class="form-control form-control-sm" id="modalTotal<?= $order['order_id'] ?>" name="total_price" value="<?= (int)$order['total_price'] ?>" min="0" required>
@@ -466,7 +473,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                         </option>
                                                                   <?php endforeach; ?>
                                                             </select>
-                                                            <div class="form-text">
+                                                            <div class="form-text mt-1">
                                                                   <small class="text-muted">
                                                                         Statut: <strong><?= ucfirst($order['newstat']) ?></strong>
                                                                   </small>

@@ -260,6 +260,55 @@
     border-radius: 15px 15px 0 0;
 }
 
+/* Modal de traitement de commande (bouton \"Traiter\") */
+.admin-order-modal .modal-content {
+    border-radius: 18px;
+}
+
+.admin-order-modal .modal-header {
+    background: var(--primary);
+    color: #fff;
+}
+
+.admin-order-modal .modal-title i {
+    font-size: 1.1rem;
+}
+
+.admin-order-modal .order-modal-summary {
+    background: #f9fafb;
+    border-radius: 10px;
+    padding: 0.6rem 0.75rem;
+    margin-bottom: 0.8rem;
+    font-size: 0.8rem;
+    color: #4b5563;
+}
+
+.admin-order-modal .order-modal-summary strong {
+    color: #111827;
+}
+
+.admin-order-modal .modal-body {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+}
+
+.admin-order-modal .form-label {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6b7280;
+}
+
+.admin-order-modal .form-control,
+.admin-order-modal .form-select {
+    font-size: 0.84rem;
+}
+
+.admin-order-modal .modal-footer {
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+}
+
 .modal-action-btn {
     display: flex;
     align-items: center;
