@@ -2,18 +2,18 @@
 <?php
     $currentPath = $_SERVER['PHP_SELF'] ?? '';
     $userName = $_SESSION['user_name'] ?? 'Utilisateur';
-    $userInitial = strtoupper(substr($userName, 0, 1));
+    $roleLabel = (isset($_SESSION['role']) && (int)$_SESSION['role'] === 1) ? 'Admin' : 'Manager';
 ?>
 
-<nav class="navbar navbar-expand-lg admin-navbar">
+<nav class="navbar navbar-expand-lg admin-navbar primary-bg paper-color">
     <div class="container-fluid">
 
         <!-- Brand -->
         <a class="navbar-brand admin-brand" href="/management/dashboard.php">
             <span class="brand-icon">
                 <i class='bx bx-store-alt'></i>
-                <span class="brand-title">ZAfrica</span>
             </span>
+            <span class="brand-title">ZAfrica</span>
         </a>
 
         <!-- Toggler -->
@@ -53,17 +53,29 @@
 
             <!-- Actions utilisateur -->
             <div class="admin-actions d-flex align-items-center gap-2">
-                <span class="user-pill">
-                    <span class="user-avatar"><?php echo $userInitial; ?></span>
-                    <span class="user-name"><?php echo htmlspecialchars($userName); ?></span>
-                </span>
-                <a href="/management/users/change-pass.php" class="btn btn-sm admin-btn-ghost" title="Changer le mot de passe">
-                    <i class='bx bx-lock-alt'></i>
-                </a>
-                <a href="/management/users/logout.php" class="btn btn-sm admin-btn-primary">
-                    <i class='bx bx-log-out-circle'></i>
-                    <span>Déconnexion</span>
-                </a>
+                <div class="dropdown">
+                    <button class="btn admin-avatar-btn dropdown-toggle" type="button" id="userMenuButton"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="user-avatar-icon">
+                            <i class='bx bx-user-circle'></i>
+                        </span>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end admin-user-menu" aria-labelledby="userMenuButton">
+                        <div class="admin-user-header admin-user-info">
+                            <div class="admin-user-name"><?php echo htmlspecialchars($userName); ?></div>
+                            <div class="admin-user-role"><?php echo $roleLabel; ?></div>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item admin-user-item" href="/management/users/change-pass.php">
+                            <i class='bx bx-lock-alt'></i>
+                            <span>Changer le mot de passe</span>
+                        </a>
+                        <a class="dropdown-item admin-user-item" href="/management/users/logout.php">
+                            <i class='bx bx-log-out-circle'></i>
+                            <span>Déconnexion</span>
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
