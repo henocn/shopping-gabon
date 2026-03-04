@@ -83,6 +83,12 @@ if (isset($_POST['valider'])) {
 
 
                 if ($orderManager->CreateOrder($data)) {
+                    try {
+                        $push = new \src\PushNotification($cnx);
+                        $push->notifyNewOrder();
+                    } catch (\Throwable $e) {
+                        // Ne pas bloquer la commande si la push échoue
+                    }
                     $_SESSION['order_message'] = "Votre commande a été passée avec succès. Nous vous contacterons bientôt.";
                     header("Location: ../../index.php?id=" . $productId);
                 } else {

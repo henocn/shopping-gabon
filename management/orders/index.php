@@ -45,12 +45,18 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
 
       <main class="container-fluid my-4">
 
-            <!-- En-tête avec bouton Archives -->
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                  <h4>Gestion des Commandes</h4>
-                  <a href="archive.php" class="btn btn-order-primary border-1 border-black rounded-3">
-                        <i class='bx bx-archive me-2'></i> Archivées
-                  </a>
+            <!-- En-tête avec bouton Archives et bannière notifications push -->
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                  <h4 class="mb-0">Gestion des Commandes</h4>
+                  <div class="d-flex align-items-center gap-2">
+                        <div id="push-notif-banner" class="d-none align-items-center gap-2 py-1 px-2 rounded bg-light border">
+                              <span class="small text-muted">Recevoir les notifications push pour les nouvelles commandes</span>
+                              <button type="button" id="push-enable-btn" class="btn btn-order-primary btn-sm">Activer</button>
+                        </div>
+                        <a href="archive.php" class="btn btn-order-primary border-1 border-black rounded-3">
+                              <i class='bx bx-archive me-2'></i> Archivées
+                        </a>
+                  </div>
             </div>
 
             <?php
@@ -149,6 +155,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                   }
                                                             ?>
                                                                   <tr class="order-row <?= $statusClass ?>"
+                                                                        data-order-id="<?= (int)$order['order_id'] ?>"
                                                                         data-status="<?= $order['newstat'] ?>"
                                                                         data-client="<?= htmlspecialchars(strtolower($order['client_name'])) ?>"
                                                                         data-phone="<?= htmlspecialchars($order['client_phone']) ?>"
@@ -239,6 +246,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                       <tbody>
                                                             <?php foreach ($groupedOrders['unreachable'] as $order): ?>
                                                                   <tr class="order-row order-row-unreachable"
+                                                                        data-order-id="<?= (int)$order['order_id'] ?>"
                                                                         data-status="<?= $order['newstat'] ?>"
                                                                         data-client="<?= htmlspecialchars(strtolower($order['client_name'])) ?>"
                                                                         data-phone="<?= htmlspecialchars($order['client_phone']) ?>"
@@ -295,6 +303,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                       <tbody>
                                                             <?php foreach ($groupedOrders['processing'] as $order): ?>
                                                                   <tr class="order-row order-row-processing"
+                                                                        data-order-id="<?= (int)$order['order_id'] ?>"
                                                                         data-status="<?= $order['newstat'] ?>"
                                                                         data-client="<?= htmlspecialchars(strtolower($order['client_name'])) ?>"
                                                                         data-phone="<?= htmlspecialchars($order['client_phone']) ?>"
@@ -370,7 +379,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                       </thead>
                                                       <tbody>
                                                             <?php foreach ($groupedOrders['delivered'] as $order): ?>
-                                                                  <tr>
+                                                                  <tr data-order-id="<?= (int)$order['order_id'] ?>">
                                                                         <td>#<?= $order['order_id'] ?></td>
                                                                         <td class="client-name-cell" title="<?= htmlspecialchars($order['client_name']) ?>"><?= htmlspecialchars($order['client_name']) ?></td>
                                                                         <td class="product-name-cell" title="<?= htmlspecialchars($order['product_name']) ?>"><?= htmlspecialchars($order['product_name']) ?></td>
@@ -559,9 +568,10 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
       <script>
             let currentDeliveryContext = null;
             let deliveryModalConfirming = false;
+            let lastOrderId = 0;
 
+            // Initialise les interactions sur les commandes (modals et boutons rapides)
             function initOrderInteractions() {
-                  // Boutons "Enregistrer" dans les modals
                   document.querySelectorAll('[id^="submitBtn"]').forEach(button => {
                         button.addEventListener('click', function(e) {
                               e.preventDefault();
@@ -603,7 +613,6 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                         });
                   });
 
-                  // Boutons rapides "Livrer"
                   document.querySelectorAll('.quick-deliver-btn').forEach(button => {
                         button.addEventListener('click', function(e) {
                               e.preventDefault();
@@ -631,7 +640,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   });
             }
 
-            // Confirmer la livraison avec les frais (inchangé)
+            // Confirme la livraison avec les frais saisis
             function confirmDelivery(orderId) {
                   const feeInput = document.getElementById('deliveryFeeInput' + orderId);
                   const deliveryFee = feeInput ? parseInt(feeInput.value || '0', 10) : 0;
@@ -671,6 +680,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
 
             window.confirmDelivery = confirmDelivery;
 
+            // Attache le comportement de retour au modal principal après le modal de frais
             function attachDeliveryModalHandler(orderId, modalElement) {
                   if (!modalElement || modalElement.dataset.handlerAttached === '1') {
                         return;
@@ -698,7 +708,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   modalElement.dataset.handlerAttached = '1';
             }
 
-            // Chargement silencieux des commandes avec jQuery
+            // Recharge silencieusement les listes de commandes
             function refreshOrdersSilently() {
                   $.get(window.location.href, function(html) {
                         const $html = $(html);
@@ -711,13 +721,122 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                         if ($newContent.length) {
                               $('#ordersTabsContent').replaceWith($newContent);
                         }
+
                         initOrderInteractions();
                   });
             }
 
+            // Récupère l'ID le plus élevé des commandes présentes dans le DOM
+            function getInitialLastOrderId() {
+                  let maxId = 0;
+                  document.querySelectorAll('[data-order-id]').forEach(row => {
+                        const id = parseInt(row.getAttribute('data-order-id'), 10);
+                        if (!isNaN(id) && id > maxId) {
+                              maxId = id;
+                        }
+                  });
+                  return maxId;
+            }
+
+            // Demande la permission pour afficher les notifications système
+            function ensureNotificationPermission() {
+                  if (!('Notification' in window)) {
+                        return;
+                  }
+                  if (Notification.permission === 'default') {
+                        Notification.requestPermission();
+                  }
+            }
+
+            // Interroge le serveur pour détecter les nouvelles commandes ; une seule notif système par batch
+            function checkNewOrders() {
+                  if (!window.jQuery) return;
+
+                  $.getJSON('notifications.php', { last_id: lastOrderId })
+                        .done(function(data) {
+                              if (!data || !data.success) return;
+                              if (typeof data.last_id === 'number') lastOrderId = data.last_id;
+
+                              if (!data.new_count || data.new_count <= 0) return;
+
+                              var msg = data.new_count === 1
+                                    ? "Une nouvelle commande vient d'être passée."
+                                    : data.new_count + " nouvelles commandes viennent d'être passées.";
+                              lastOrderId = data.last_id;
+
+                              if ('Notification' in window && Notification.permission === 'granted') {
+                                    try {
+                                          new Notification("Nouvelle commande", { body: msg });
+                                    } catch (e) {}
+                              }
+                              if (typeof window.showNotification === 'function') {
+                                    window.showNotification(msg, 'success');
+                              }
+                              refreshOrdersSilently();
+                        });
+            }
+
+            // --- Web Push : abonnement pour recevoir les notifs même hors de la page ---
+            function urlBase64ToUint8Array(base64String) {
+                  var padding = '='.repeat((4 - base64String.length % 4) % 4);
+                  var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+                  var rawData = window.atob(base64);
+                  var output = new Uint8Array(rawData.length);
+                  for (var i = 0; i < rawData.length; i++) output[i] = rawData.charCodeAt(i);
+                  return output;
+            }
+
+            function registerPushAndSubscribe(publicKey) {
+                  if (!('serviceWorker' in navigator)) return Promise.reject();
+                  return navigator.serviceWorker.register('../../sw.js', { scope: '../../' })
+                        .then(function(reg) {
+                              return reg.pushManager.subscribe({
+                                    userVisibleOnly: true,
+                                    applicationServerKey: urlBase64ToUint8Array(publicKey)
+                              });
+                        })
+                        .then(function(sub) {
+                              var payload = sub.toJSON ? sub.toJSON() : { endpoint: sub.endpoint, keys: { p256dh: btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey('p256dh')))), auth: btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey('auth')))) } };
+                              return fetch('push-subscribe.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                        });
+            }
+
             document.addEventListener('DOMContentLoaded', function() {
                   initOrderInteractions();
+                  lastOrderId = getInitialLastOrderId();
+                  ensureNotificationPermission();
+
                   setInterval(refreshOrdersSilently, 60 * 1000);
+                  setInterval(checkNewOrders, 10 * 1000);
+
+                  // Web Push : afficher le bouton si activé côté serveur et permission non accordée
+                  fetch('push-public-key.php')
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                              if (!data.enabled || !data.publicKey) return;
+                              var banner = document.getElementById('push-notif-banner');
+                              var btn = document.getElementById('push-enable-btn');
+                              if (!banner || !btn) return;
+                              if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+                                    banner.classList.remove('d-none');
+                                    banner.classList.add('d-flex');
+                              } else if (Notification.permission === 'granted') {
+                                    registerPushAndSubscribe(data.publicKey).catch(function() {});
+                              }
+                              btn.addEventListener('click', function() {
+                                    if (typeof Notification === 'undefined') return;
+                                    Notification.requestPermission().then(function(perm) {
+                                          if (perm !== 'granted') return;
+                                          banner.classList.add('d-none');
+                                          registerPushAndSubscribe(data.publicKey).then(function() {
+                                                if (typeof window.showNotification === 'function') window.showNotification('Notifications push activées.', 'success');
+                                          }).catch(function() {
+                                                if (typeof window.showNotification === 'function') window.showNotification('Impossible d\'activer les notifications.', 'error');
+                                          });
+                                    });
+                              });
+                        })
+                        .catch(function() {});
             });
       </script>
 
