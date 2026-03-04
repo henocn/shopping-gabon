@@ -610,6 +610,20 @@
   white-space: nowrap;
 }
 
+/* Bouton principal "Traiter" dans les listes de commandes */
+.btn-order-primary {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.btn-order-primary:hover,
+.btn-order-primary:focus {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
 /* Cellules tronquées (client, produit, notes) */
 .product-name-cell,
 .note-cell,

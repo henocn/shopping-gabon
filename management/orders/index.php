@@ -47,9 +47,9 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
 
             <!-- En-tête avec bouton Archives -->
             <div class="d-flex justify-content-between align-items-center mb-3">
-                  <h4><i class='bx bx-package me-2'></i>Gestion des Commandes</h4>
-                  <a href="archive.php" class="btn btn-outline-primary">
-                        <i class='bx bx-archive me-2'></i>Voir les Archives
+                  <h4>Gestion des Commandes</h4>
+                  <a href="archive.php" class="btn btn-order-primary border-1 border-black rounded-3">
+                        <i class='bx bx-archive me-2'></i> Archivées
                   </a>
             </div>
 
@@ -195,11 +195,11 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                                           </form>
                                                                                     </div>
                                                                               <?php else: ?>
-                                                                                    <!-- Bouton modal pour les autres statuts -->
-                                                                                    <button class="btn btn-outline-primary btn-sm" type="button"
+                                                                                    <!-- Bouton modal pour traiter la commande (autres statuts) -->
+                                                                                    <button class="btn btn-order-primary btn-sm" type="button"
                                                                                           data-bs-toggle="modal"
                                                                                           data-bs-target="#orderModal<?= (int)$order['order_id'] ?>">
-                                                                                          <i class='bx bx-edit'></i>
+                                                                                          Traiter
                                                                                     </button>
                                                                               <?php endif; ?>
                                                                         </td>
@@ -253,10 +253,10 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                         <td class="note-cell" title="<?= htmlspecialchars($order['manager_note'] ?? '') ?>"><?= htmlspecialchars($order['manager_note'] ?? '') ?></td>
                                                                         <td><?= date('d/m/Y à H:i', strtotime($order['created_at'])) ?></td>
                                                                         <td>
-                                                                              <button class="btn btn-outline-primary btn-sm" type="button"
+                                                                              <button class="btn btn-order-primary btn-sm" type="button"
                                                                                     data-bs-toggle="modal"
                                                                                     data-bs-target="#orderModal<?= (int)$order['order_id'] ?>">
-                                                                                    <i class='bx bx-edit'></i>
+                                                                                    Traiter
                                                                               </button>
                                                                         </td>
                                                                   </tr>
