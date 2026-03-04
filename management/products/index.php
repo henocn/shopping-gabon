@@ -115,6 +115,12 @@ $products = $product->getAllProducts();
                                             <?php else: ?>
                                                 <span class="small text-muted ms-1">Aucun manager</span>
                                             <?php endif; ?>
+                                            <button type="button"
+                                                    class="btn btn-sm btn-link p-0 ms-1 product-copy-link"
+                                                    onclick="copyProductLink(<?php echo $prod['product_id']; ?>, <?php echo (int)$ctry['id']; ?>)"
+                                                    title="Copier le lien pour ce pays">
+                                                <i class='bx bx-link-alt'></i>
+                                            </button>
                                         </div>
                                     <?php endforeach; ?>
                                 <?php else: ?>
@@ -128,11 +134,7 @@ $products = $product->getAllProducts();
                                 </button>
                                 <div class="context-menu admin-context-menu"
                                      id="contextMenu<?php echo $prod['product_id']; ?>">
-                                    <button type="button" class="menu-item d-flex align-items-center gap-2"
-                                            onclick="copyProductLink(<?php echo $prod['product_id']; ?>)">
-                                        <i class='bx bx-link'></i>
-                                        <span>Copier le lien</span>
-                                    </button>
+                                    
                                     <a href="update.php?id=<?php echo $prod['product_id']; ?>"
                                        class="menu-item d-flex align-items-center gap-2">
                                         <i class='bx bx-edit'></i>
@@ -156,10 +158,43 @@ $products = $product->getAllProducts();
 
     <script src="../../assets/js/bootstrap.bundle.min.js"></script>
     <script>
-        function copyProductLink(productId) {
-            const shareUrl = "<?php echo $_SERVER['HTTP_HOST']; ?>/index.php?id=" + productId;
-            navigator.clipboard.writeText(shareUrl);
-            showNotification("Lien copié dans le presse-papiers !", "success");
+        function fallbackCopy(text) {
+            const tempInput = document.createElement('input');
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            try {
+                document.execCommand('copy');
+            } catch (e) {}
+            document.body.removeChild(tempInput);
+            if (typeof showNotification === 'function') {
+                showNotification("Lien copié dans le presse-papiers !", "success");
+            } else {
+                alert("Lien copié : " + text);
+            }
+        }
+
+        function copyProductLink(productId, countryId) {
+            let shareUrl = window.location.protocol + '//' + window.location.host + '/index.php?id=' + productId;
+            if (countryId) {
+                shareUrl += '&country=' + countryId;
+            }
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(shareUrl)
+                    .then(function () {
+                        if (typeof showNotification === 'function') {
+                            showNotification("Lien copié dans le presse-papiers !", "success");
+                        } else {
+                            alert("Lien copié : " + shareUrl);
+                        }
+                    })
+                    .catch(function () {
+                        fallbackCopy(shareUrl);
+                    });
+            } else {
+                fallbackCopy(shareUrl);
+            }
         }
 
 

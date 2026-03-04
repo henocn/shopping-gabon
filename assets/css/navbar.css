@@ -135,10 +135,10 @@
 }
 
 .admin-btn-primary {
-    background: linear-gradient(135deg, #f97316, #ec4899);
+    background: linear-gradient(135deg, var(--secondary), var(--primary));
     border: none;
-    color: #0b1120;
-    border-radius: 999px;
+    color: var(--paper);
+    border-radius: 12px;
     padding-inline: .9rem;
     font-size: .8rem;
     display: inline-flex;

@@ -49,7 +49,21 @@ function countryCodeToFlagEntity($code)
 
 // Récupérer le prix du pays (à partir de la première association)
 $productCountries = $productManager->getProductCountries($productId);
-$displayPrice = !empty($productCountries) ? $productCountries[0]['selling_price'] : 0;
+$selectedCountryId = isset($_GET['country']) ? intval($_GET['country']) : null;
+$displayPrice = 0;
+
+if (!empty($productCountries)) {
+    foreach ($productCountries as $ctry) {
+        if ($selectedCountryId !== null && (int)$ctry['id'] === $selectedCountryId) {
+            $displayPrice = $ctry['selling_price'];
+            break;
+        }
+    }
+    if ($displayPrice === 0) {
+        $displayPrice = $productCountries[0]['selling_price'];
+        $selectedCountryId = (int)$productCountries[0]['id'];
+    }
+}
 
 $displayTitle = $product['name'];
 $displayDescription = $product['description'];
@@ -129,8 +143,11 @@ $displayDescription = $product['description'];
                         <div class="phone-input-wrapper">
                             <select name="client_country" class="form-control-country" required>
                                 <?php foreach ($productCountries as $ctry): ?>
-                                    <?php $flag = countryCodeToFlagEntity($ctry['code'] ?? ''); ?>
-                                    <option value="<?= htmlspecialchars($ctry['id']); ?>">
+                                    <?php
+                                    $flag = countryCodeToFlagEntity($ctry['code'] ?? '');
+                                    $isSelected = ($selectedCountryId !== null && (int)$ctry['id'] === $selectedCountryId);
+                                    ?>
+                                    <option value="<?= htmlspecialchars($ctry['id']); ?>" <?= $isSelected ? 'selected' : ''; ?>>
                                         <?= $flag ? $flag . ' ' : '' ?><?= htmlspecialchars($ctry['phone_code']); ?>
                                     </option>
                                 <?php endforeach; ?>
