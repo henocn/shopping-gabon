@@ -94,6 +94,91 @@
     font-weight: 600;
 }
 
+/* En-tête page liste (produits, etc.) */
+.admin-page-header .admin-title {
+    font-size: 1.4rem;
+}
+
+.admin-filters-bar {
+    padding: .6rem 1rem;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.7);
+    box-shadow: 0 8px 18px rgba(15,23,42,.04);
+}
+
+.admin-search-wrapper {
+    position: relative;
+    max-width: 340px;
+    width: 100%;
+}
+
+.admin-search-wrapper i {
+    position: absolute;
+    left: .6rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    font-size: 1rem;
+}
+
+.admin-search-input {
+    padding-left: 2.1rem;
+    font-size: .9rem;
+}
+
+/* Tableau produits */
+.admin-table-panel {
+    margin-top: 1rem;
+}
+
+.product-main-info .product-image {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+}
+
+.product-name-cell-admin {
+    font-weight: 500;
+    color: #111827;
+}
+
+.country-badge {
+    background: rgba(37,99,235,.08);
+    color: #1d4ed8;
+}
+
+.manager-badge {
+    background: rgba(148,163,184,.2);
+    color: #111827;
+}
+
+.admin-context-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 36px;
+    z-index: 1000;
+    min-width: 190px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 12px 25px rgba(15,23,42,.18);
+    padding: .25rem 0;
+}
+
+.admin-context-menu .menu-item {
+    width: 100%;
+    padding: .5rem 1rem;
+    border: none;
+    background: transparent;
+    font-size: .9rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.admin-context-menu .menu-item:hover {
+    background: rgba(249,250,251,0.9);
+}
+
 /* Conteneurs de tableaux admin (produits, utilisateurs, commandes) */
 .table-container {
     background: #ffffff;
