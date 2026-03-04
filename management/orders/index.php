@@ -118,19 +118,19 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                           <p class="text-muted">Aucune commande à traiter.</p>
                                     <?php else: ?>
                                           <div class="table-responsive">
-                                                <table class="table" id="orders-table">
+                                                <table class="table table-bordered" id="orders-table">
                                                       <thead>
                                                             <tr>
                                                                   <th scope="col">ID</th>
                                                                   <th scope="col">Client</th>
-                                                                  <th scope="col">Numéro</th>
+                                                                  <th scope="col">Contact</th>
                                                                   <th scope="col">Produit</th>
                                                                   <th scope="col">Qté</th>
-                                                                  <th scope="col">Prix_Unitaire</th>
-                                                                  <th scope="col">Prix_Total</th>
-                                                                  <th scope="col">Mes_Notes</th>
+                                                                  <th scope="col">Prix Unit.</th>
+                                                                  <th scope="col">Prix Total</th>
+                                                                  <th scope="col">Mes Notes</th>
+                                                                  <th scope="col">Date</th>
                                                                   <th scope="col">Actions</th>
-                                                                  <th scope="col">Passer le</th>
                                                             </tr>
                                                       </thead>
                                                       <tbody>
@@ -161,6 +161,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                         <td><?= number_format($order['unit_price'] ?? 0, 0, ',', ' ') ?> FCFA</td>
                                                                         <td><?= number_format($order['total_price'], 0, ',', ' ') ?> FCFA</td>
                                                                         <td class="note-cell" title="<?= htmlspecialchars($order['manager_note'] ?? '') ?>"><?= htmlspecialchars($order['manager_note'] ?? '') ?></td>
+                                                                        <td><?= date('d/m/Y à H:i', strtotime($order['created_at'])) ?></td>
                                                                         <td>
                                                                               <?php if ($order['newstat'] === 'processing'): ?>
                                                                                     <!-- Boutons directs pour les commandes programmées -->
@@ -202,7 +203,6 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                                     </button>
                                                                               <?php endif; ?>
                                                                         </td>
-                                                                        <td><?= date('d/m/Y à H:i', strtotime($order['created_at'])) ?></td>
                                                                   </tr>
                                                             <?php endforeach; ?>
                                                       </tbody>
@@ -221,19 +221,19 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                           <p class="text-muted">Aucune commande injoignable.</p>
                                     <?php else: ?>
                                           <div class="table-responsive">
-                                                <table class="table" id="orders-table">
+                                                <table class="table table-bordered" id="orders-table">
                                                       <thead>
                                                             <tr>
                                                                   <th scope="col">ID</th>
                                                                   <th scope="col">Client</th>
-                                                                  <th scope="col">Numéro</th>
+                                                                  <th scope="col">Contact</th>
                                                                   <th scope="col">Produit</th>
                                                                   <th scope="col">Qté</th>
-                                                                  <th scope="col">Prix_Unitaire</th>
-                                                                  <th scope="col">Prix_Total</th>
-                                                                  <th scope="col">Mes_Notes</th>
+                                                                  <th scope="col">Prix Unitaire</th>
+                                                                  <th scope="col">Prix Total</th>
+                                                                  <th scope="col">Mes Notes</th>
+                                                                  <th scope="col">Date</th>
                                                                   <th scope="col">Actions</th>
-                                                                  <th scope="col">Passer le</th>
                                                             </tr>
                                                       </thead>
                                                       <tbody>
@@ -251,6 +251,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                         <td><?= number_format($order['unit_price'] ?? 0, 0, ',', ' ') ?> FCFA</td>
                                                                         <td><?= number_format($order['total_price'], 0, ',', ' ') ?> FCFA</td>
                                                                         <td class="note-cell" title="<?= htmlspecialchars($order['manager_note'] ?? '') ?>"><?= htmlspecialchars($order['manager_note'] ?? '') ?></td>
+                                                                        <td><?= date('d/m/Y à H:i', strtotime($order['created_at'])) ?></td>
                                                                         <td>
                                                                               <button class="btn btn-outline-primary btn-sm" type="button"
                                                                                     data-bs-toggle="modal"
@@ -258,7 +259,6 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                                     <i class='bx bx-edit'></i>
                                                                               </button>
                                                                         </td>
-                                                                        <td><?= date('d/m/Y à H:i', strtotime($order['created_at'])) ?></td>
                                                                   </tr>
                                                             <?php endforeach; ?>
                                                       </tbody>
@@ -277,19 +277,19 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                           <p class="text-muted">Aucune commande programmée.</p>
                                     <?php else: ?>
                                           <div class="table-responsive">
-                                                <table class="table" id="orders-table">
+                                                <table class="table table-bordered" id="orders-table">
                                                       <thead>
                                                             <tr>
                                                                   <th scope="col">ID</th>
                                                                   <th scope="col">Client</th>
-                                                                  <th scope="col">Numéro</th>
+                                                                  <th scope="col">Contact</th>
                                                                   <th scope="col">Produit</th>
                                                                   <th scope="col">Qté</th>
-                                                                  <th scope="col">Prix_Unitaire</th>
-                                                                  <th scope="col">Prix_Total</th>
-                                                                  <th scope="col">Mes_Notes</th>
+                                                                  <th scope="col">Prix Unit.</th>
+                                                                  <th scope="col">Prix Total</th>
+                                                                  <th scope="col">Mes Notes</th>
+                                                                  <th scope="col">Date</th>
                                                                   <th scope="col">Actions</th>
-                                                                  <th scope="col">Passer le</th>
                                                             </tr>
                                                       </thead>
                                                       <tbody>
@@ -307,6 +307,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                         <td><?= number_format($order['unit_price'] ?? 0, 0, ',', ' ') ?> FCFA</td>
                                                                         <td><?= number_format($order['total_price'], 0, ',', ' ') ?> FCFA</td>
                                                                         <td class="note-cell" title="<?= htmlspecialchars($order['manager_note'] ?? '') ?>"><?= htmlspecialchars($order['manager_note'] ?? '') ?></td>
+                                                                        <td><?= date('d/m/Y à H:i', strtotime($order['created_at'])) ?></td>
                                                                         <td>
                                                                               <div class="order-action-group">
                                                                                     <form method="POST" action="save.php" id="quickDeliverForm<?= $order['order_id'] ?>">
@@ -338,7 +339,6 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                                     </form>
                                                                               </div>
                                                                         </td>
-                                                                        <td><?= date('d/m/Y à H:i', strtotime($order['created_at'])) ?></td>
                                                                   </tr>
                                                             <?php endforeach; ?>
                                                       </tbody>
@@ -357,7 +357,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                           <p class="text-muted">Aucune commande livrée aujourd'hui.</p>
                                     <?php else: ?>
                                           <div class="table-responsive">
-                                                <table class="table table-striped">
+                                                <table class="table table-striped table-bordered" id="orders-delivered-table">
                                                       <thead>
                                                             <tr>
                                                                   <th>ID</th>
@@ -365,7 +365,6 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                   <th>Produit</th>
                                                                   <th>Qté</th>
                                                                   <th>Total</th>
-                                                                  <th>Statut</th>
                                                                   <th>Date</th>
                                                             </tr>
                                                       </thead>
@@ -377,9 +376,6 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                         <td class="product-name-cell" title="<?= htmlspecialchars($order['product_name']) ?>"><?= htmlspecialchars($order['product_name']) ?></td>
                                                                         <td><?= $order['quantity'] ?></td>
                                                                         <td><?= number_format($order['total_price']) ?> FCFA</td>
-                                                                        <td>
-                                                                              <span class="badge bg-success">Livré</span>
-                                                                        </td>
                                                                         <td><?= date('d/m/Y H:i', strtotime($order['updated_at'])) ?></td>
                                                                   </tr>
                                                             <?php endforeach; ?>

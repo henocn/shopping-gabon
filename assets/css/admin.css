@@ -531,7 +531,7 @@
 /* Commandes – onglets, cartes, badges (issu de order.css / orders.css) */
 .nav-tabs {
   border-bottom: 1px solid var(--paper);
-  margin-bottom: 0.2rem;
+  margin-bottom: 0;
 }
 
 .nav-tabs .nav-link {
@@ -540,17 +540,22 @@
   background: var(--magenta);
   color: var(--purple);
   font-weight: 500;
-  padding: 0.2rem 0.5rem;
+  padding: 0.4rem 0.9rem;
   transition: all 0.3s ease;
   position: relative;
-  font-size: 0.7rem;
+  font-size: 0.8rem;
+}
+
+.nav-tabs .nav-link.active {
+  background-color: var(--purple);
+  color: var(--paper) !important;
+  border-bottom-color: var(--purple);
 }
 
 /* Style global du tableau commandes */
 #orders-table thead th {
   background-color: var(--purple);
   color: var(--paper);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   text-transform: uppercase;
   font-size: 0.78rem;
   letter-spacing: 0.06em;
@@ -560,36 +565,27 @@
 
 #orders-table tbody td {
   vertical-align: middle;
-  border-color: #f0e6ff !important;
+  border-color: black !important;
 }
 
-/* Couleurs des lignes selon statut (sans dégradés) */
-.order-row-default td {
-  background-color: #ffffff;
+#orders-delivered-table thead th {
+  background-color: var(--purple);
+  color: var(--paper);
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  padding: 0.75rem 1rem;
+  white-space: nowrap;
 }
 
-.order-row-unreachable td {
-  background-color: rgba(220, 53, 69, 0.08);
-  color: #5e1b20;
-  border-color: transparent !important;
+.table tbody tr + tr td {
+  border-top: 1px solid black;
 }
 
-.order-row-remind td {
-  background-color: rgba(37, 99, 235, 0.08);
-  color: #16397f;
-  border-color: transparent !important;
+.table-bordered {
+  border-color: black;
 }
 
-.order-row-processing td {
-  background-color: rgba(234, 179, 8, 0.12);
-  color: #5a3500;
-  border-color: transparent !important;
-}
-
-#orders-table tbody tr:hover td {
-  box-shadow: inset 0 0 0 1px rgba(24, 4, 53, 0.05);
-  transform: translateY(-1px);
-}
 
 /* Groupes d’actions commandes */
 .order-action-group {
