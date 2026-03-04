@@ -1,0 +1,541 @@
+/* Thème global admin (dashboard, produits, commandes, utilisateurs) */
+
+.admin-main {
+    padding-bottom: 3rem;
+}
+
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-block: 2rem 1rem;
+}
+
+.admin-title {
+    font-size: 1.8rem;
+    margin: 0 0 .25rem;
+}
+
+.admin-subtitle {
+    margin: 0;
+    color: #6b7280;
+    font-size: .9rem;
+}
+
+.admin-header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .5rem .9rem;
+    border-radius: 999px;
+    background: rgba(24,4,53,.06);
+    color: var(--purple);
+    font-size: .85rem;
+}
+
+.admin-header-badge i {
+    font-size: 1.1rem;
+}
+
+.admin-section {
+    padding-bottom: 1.5rem;
+}
+
+.admin-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 1.1rem;
+    margin-bottom: 1.8rem;
+}
+
+.admin-stat-card {
+    display: flex;
+    align-items: center;
+    gap: .9rem;
+    padding: 1rem 1.1rem;
+    border-radius: 14px;
+    background: #fff;
+    border: 1px solid rgba(24, 4, 53, 0.8);
+    box-shadow: 0 10px 25px rgba(15,23,42,.06);
+}
+
+.admin-stat-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.3rem;
+}
+
+.admin-stat-icon-primary { background: linear-gradient(135deg, var(--primary), var(--secondary)); }
+.admin-stat-icon-success { background: #16a34a; }
+.admin-stat-icon-warning { background: #eab308; }
+.admin-stat-icon-info    { background: #0ea5e9; }
+
+.admin-stat-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.admin-stat-label {
+    margin: 0;
+    font-size: .8rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+
+.admin-stat-value {
+    margin: .2rem 0 0;
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+/* Conteneurs de tableaux admin (produits, utilisateurs, commandes) */
+.table-container {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 12px 35px rgba(15, 23, 42, 0.06);
+}
+
+.table-container .table > :not(caption) > * > * {
+    padding: 0.9rem 1rem;
+    vertical-align: middle;
+}
+
+/* Images produits / avatars */
+.product-image {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+/* Lignes actives / inactives (utilisateurs, etc.) */
+.table-container .table tr.status-active td {
+    background: rgba(159, 216, 176, 0.18);
+}
+
+.table-container .table tr.status-inactive td {
+    background: rgba(255, 154, 154, 0.18);
+}
+
+.table-container .table tr.status-active:hover td {
+    background: rgba(159, 216, 176, 0.28);
+    cursor: pointer;
+}
+
+.table-container .table tr.status-inactive:hover td {
+    background: rgba(255, 154, 154, 0.26);
+    cursor: pointer;
+}
+
+/* Boutons d’actions contextuelles (liste produits, etc.) */
+.action-btn {
+    background: transparent;
+    border: none;
+    color: var(--purple);
+    font-size: 1.5rem;
+    padding: 0.25rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.action-btn:hover {
+    background: var(--paper);
+}
+
+/* Modales admin génériques */
+.modal-content {
+    border-radius: 15px;
+    border: none;
+    box-shadow: 0 12px 35px rgba(15, 23, 42, 0.18);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, var(--magenta), var(--paper));
+    color: var(--purple);
+    border-radius: 15px 15px 0 0;
+}
+
+.modal-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    border: none;
+    margin-bottom: 0.5rem;
+    width: 100%;
+    text-align: left;
+    transition: all 0.3s ease;
+}
+
+.btn-update {
+    background: var(--paper);
+    color: var(--purple);
+}
+
+.btn-update:hover {
+    background: var(--secondary);
+    color: white;
+}
+
+.btn-disable {
+    background: #fff5e6;
+    color: #ff9800;
+}
+
+.btn-disable:hover {
+    background: #ff9800;
+    color: white;
+}
+
+.btn-delete {
+    background: #ffe6e6;
+    color: #dc3545;
+}
+
+.btn-delete:hover {
+    background: #dc3545;
+    color: white;
+}
+
+/* Formulaire produits (add / update) */
+.form-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.custom-file-input {
+    border: 2px dashed var(--purple);
+    padding: 2rem;
+    text-align: center;
+    border-radius: 10px;
+    cursor: pointer;
+    margin-bottom: 1rem;
+}
+
+.custom-file-input:hover {
+    background: var(--magenta);
+}
+
+.carousel-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 1rem;
+}
+
+.characteristic-item {
+    background: var(--magenta);
+    padding: 1rem;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+}
+
+.floating-actions {
+    position: fixed;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 1000;
+}
+
+.floating-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: none;
+    background: var(--secondary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.floating-btn:hover {
+    transform: scale(1.1);
+    background: var(--primary);
+}
+
+.floating-btn i {
+    font-size: 1.5rem;
+}
+
+.floating-btn.active {
+    background: var(--primary);
+    box-shadow: 0 0 0 3px var(--secondary);
+}
+
+.existing-media {
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.existing-media img {
+    max-width: 100px;
+    max-height: 100px;
+    margin-right: 10px;
+}
+
+.delete-checkbox {
+    margin-top: 10px;
+}
+
+/* Sections panneaux dashboard (2 colonnes) */
+.admin-grid-2 {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: 1.5rem;
+}
+
+.admin-panel {
+    background: #fff;
+    border-radius: 16px;
+    padding: 1.4rem 1.5rem;
+    box-shadow: 0 10px 25px rgba(15,23,42,.06);
+}
+
+.admin-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: .6rem;
+}
+
+.admin-panel-header h2 {
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+.admin-link {
+    font-size: .85rem;
+    color: var(--purple);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+}
+
+.admin-link i {
+    font-size: 1rem;
+}
+
+.admin-panel-text {
+    font-size: .9rem;
+    color: #4b5563;
+    margin-bottom: .9rem;
+}
+
+.admin-keypoints {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: .9rem;
+    color: #374151;
+}
+
+.admin-keypoints li {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    margin-bottom: .35rem;
+}
+
+.admin-keypoints i {
+    color: var(--primary);
+}
+
+.admin-users-orders {
+    display: grid;
+    grid-template-columns: minmax(0,1fr);
+    gap: .9rem;
+}
+
+.admin-users-block,
+.admin-orders-block {
+    background: rgba(241,235,241,.6);
+    border-radius: 12px;
+    padding: .75rem .9rem;
+}
+
+.admin-small-label {
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #6b7280;
+    margin: 0 0 .2rem;
+}
+
+.admin-users-line,
+.admin-orders-line {
+    margin: 0 0 .5rem;
+    font-size: .9rem;
+}
+
+.admin-chip-link {
+    display: inline-flex;
+    align-items: center;
+    padding: .2rem .7rem;
+    border-radius: 999px;
+    font-size: .78rem;
+    background: #fff;
+    color: var(--purple);
+    text-decoration: none;
+    border: 1px solid rgba(24,4,53,.1);
+}
+
+@media (max-width: 992px) {
+    .admin-grid-2 {
+        grid-template-columns: minmax(0,1fr);
+    }
+}
+
+/* Commandes – onglets, cartes, badges (issu de order.css / orders.css) */
+.nav-tabs {
+  border-bottom: 1px solid var(--paper);
+  margin-bottom: 0.2rem;
+}
+
+.nav-tabs .nav-link {
+  border: none;
+  border-bottom: 1px solid transparent;
+  background: var(--magenta);
+  color: var(--purple);
+  font-weight: 500;
+  padding: 0.2rem 0.5rem;
+  transition: all 0.3s ease;
+  position: relative;
+  font-size: 0.7rem;
+}
+
+.nav-tabs .nav-link:hover:not(.active) {
+  border-color: var(--secondary);
+  background-color: var(--paper);
+  color: var(--purple);
+}
+
+.nav-tabs .nav-link.active {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: white !important;
+  border-bottom-color: var(--secondary);
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+}
+
+/* Style global du tableau commandes */
+#orders-table thead th {
+  background: linear-gradient(90deg, rgba(24,4,53,0.92), rgba(206,133,87,0.9));
+  color: #fdfaf7;
+  border-bottom: 0;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  padding: 0.75rem 1rem;
+  white-space: nowrap;
+}
+
+#orders-table tbody td {
+  vertical-align: middle;
+  border-color: #f0e6ff !important;
+}
+
+/* Couleurs des lignes selon statut */
+.order-row-default td {
+  background-color: #ffffff;
+}
+
+.order-row-unreachable td {
+  background: linear-gradient(90deg, #ffe1e4, #ffd3d8);
+  color: #5e1b20;
+  border-color: transparent !important;
+}
+
+.order-row-remind td {
+  background: linear-gradient(90deg, #e4ecff, #d6e3ff);
+  color: #16397f;
+  border-color: transparent !important;
+}
+
+.order-row-processing td {
+  background: linear-gradient(90deg, #fff1d5, #ffe6bf);
+  color: #5a3500;
+  border-color: transparent !important;
+}
+
+#orders-table tbody tr:hover td {
+  box-shadow: inset 0 0 0 1px rgba(24, 4, 53, 0.05);
+  transform: translateY(-1px);
+}
+
+/* Groupes d’actions commandes */
+.order-action-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.order-action-group form {
+  margin: 0;
+}
+
+.order-action-group .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+/* Cellules tronquées (client, produit, notes) */
+.product-name-cell,
+.note-cell,
+.client-name-cell {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: help;
+  position: relative;
+}
+
+.product-name-cell:hover,
+.note-cell:hover,
+.client-name-cell:hover {
+  overflow: visible;
+  white-space: normal;
+  word-break: break-word;
+  background-color: #f8f9fa;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  padding: 0.5rem;
+}
+
+@media (max-width: 576px) {
+  .order-action-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .order-action-group form {
+    width: 100%;
+  }
+
+  .order-action-group .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+

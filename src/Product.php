@@ -124,16 +124,14 @@ class Product
 
     public function createProduct($data)
     {
-        $req = $this->bd->prepare("INSERT INTO products (name, ar_name, purchase_price, shipping_price, quantity, image, description, ar_description, carousel1, carousel2, carousel3, carousel4, carousel5) VALUES (:name, :ar_name, :purchase_price, :shipping_price, :quantity, :image, :description, :ar_description, :carousel1, :carousel2, :carousel3, :carousel4, :carousel5)");
+        $req = $this->bd->prepare("INSERT INTO products (name, purchase_price, shipping_price, quantity, image, description, carousel1, carousel2, carousel3, carousel4, carousel5) VALUES (:name, :purchase_price, :shipping_price, :quantity, :image, :description, :carousel1, :carousel2, :carousel3, :carousel4, :carousel5)");
         $req->execute([
             'name'   => $data['name'],
-            'ar_name' => $data['ar_name'] ?? '',
             'purchase_price'    => $data['purchase_price'],
             'shipping_price'    => $data['shipping_price'],
             'quantity'          => $data['quantity'],
             'image'     => $data['image'],
             'description' => $data['description'],
-            'ar_description' => $data['ar_description'] ?? '',
             'carousel1' => $data['carousel1'] ?? '',
             'carousel2' => $data['carousel2'] ?? '',
             'carousel3' => $data['carousel3'] ?? '',
@@ -271,7 +269,7 @@ class Product
 
     public function getAllProducts()
     {
-        $stmt = $this->bd->prepare("SELECT p.id AS product_id, p.name, p.ar_name, p.image, p.description, p.ar_description 
+        $stmt = $this->bd->prepare("SELECT p.id AS product_id, p.name, p.image, p.description 
         FROM products p 
         ORDER BY p.id DESC");
         $stmt->execute();
@@ -281,7 +279,7 @@ class Product
     
     // une fonction qui renvoi a un produit au hazar dans la base de donnée
     public function getRandomProduct(){
-        $stmt = $this->bd->prepare("SELECT p.id AS product_id, p.name, p.ar_name, p.image, p.description, p.ar_description
+        $stmt = $this->bd->prepare("SELECT p.id AS product_id, p.name, p.image, p.description
         FROM products p 
         ORDER BY RAND() 
         LIMIT 1");
@@ -327,17 +325,15 @@ class Product
 
     public function updateProduct($productId, $data)
     {
-        $req = $this->bd->prepare("UPDATE products SET name = :name, ar_name = :ar_name, purchase_price = :purchase_price, shipping_price = :shipping_price, quantity = :quantity, image = :image, description = :description, ar_description = :ar_description, carousel1 = :carousel1, carousel2 = :carousel2, carousel3 = :carousel3, carousel4 = :carousel4, carousel5 = :carousel5 WHERE id = :id");
+        $req = $this->bd->prepare("UPDATE products SET name = :name, purchase_price = :purchase_price, shipping_price = :shipping_price, quantity = :quantity, image = :image, description = :description, carousel1 = :carousel1, carousel2 = :carousel2, carousel3 = :carousel3, carousel4 = :carousel4, carousel5 = :carousel5 WHERE id = :id");
         $req->execute([
             'id' => $productId,
             'name'   => $data['name'],
-            'ar_name' => $data['ar_name'] ?? '',
             'purchase_price'    => $data['purchase_price'],
             'shipping_price'    => $data['shipping_price'],
             'quantity'          => $data['quantity'],
             'image'     => $data['image'],
             'description' => $data['description'],
-            'ar_description' => $data['ar_description'] ?? '',
             'carousel1' => $data['carousel1'] ?? '',
             'carousel2' => $data['carousel2'] ?? '',
             'carousel3' => $data['carousel3'] ?? '',

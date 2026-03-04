@@ -40,187 +40,127 @@ $canceledOrders = $orderObj->getOrdersByStatus('canceled');*/
     <title>Admin Dashboard</title>
     <link href="../assets/css/bootstrap.min.css" rel="stylesheet">
     <link href="../assets/css/index.css" rel="stylesheet" />
+    <link href="../assets/css/admin.css" rel="stylesheet" />
     <link href="../assets/css/navbar.css" rel="stylesheet" />
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-    <style>
-        .stat-card {
-            border-radius: 15px;
-            border: none;
-            transition: transform 0.3s ease;
-        }
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
-        .stat-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .bg-purple-light {
-            background-color: rgba(var(--purple-rgb), 0.1);
-        }
-        .bg-success-light {
-            background-color: rgba(25, 135, 84, 0.1);
-        }
-        .bg-danger-light {
-            background-color: rgba(220, 53, 69, 0.1);
-        }
-        .bg-warning-light {
-            background-color: rgba(255, 193, 7, 0.1);
-        }
-        .dashboard-title {
-            color: var(--purple);
-            font-weight: bold;
-            border-bottom: 3px solid var(--purple);
-            display: inline-block;
-            padding-bottom: 5px;
-        }
-    </style>
 </head>
 
 <body class="d-flex flex-column h-100">
     <?php include '../includes/navbar.php'; ?>
 
-    <main class="flex-shrink-0">
-        <div class="container my-4">
-            <h2 class="dashboard-title mb-4">Tableau de bord</h2>
-
-            <!-- Statistiques des produits -->
-            <div class="row g-4 mb-4">
-                <div class="col-12 col-md-6 col-lg-3">
-                    <div class="card stat-card shadow-sm">
-                        <div class="card-body paper-bg border-style-2">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <p class="text-muted mb-2">Total Produits</p>
-                                    <h3 class="mb-0"><?php echo $totalProducts; ?></h3>
-                                </div>
-                                <div class="stat-icon bg-purple-light border-style-1">
-                                    <i class='bx bx-package' style="color: var(--purple); font-size: 24px;"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-12 col-md-6 col-lg-3">
-                    <div class="card stat-card shadow-sm">
-                        <div class="card-body paper-bg border-style-2">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <p class="text-muted mb-2">Produits Disponibles</p>
-                                    <h3 class="mb-0"><?php echo $availableProducts; ?></h3>
-                                </div>
-                                <div class="stat-icon bg-success-light border-style-1">
-                                    <i class='bx bx-check-circle' style="color: var(--bs-success); font-size: 24px;"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-12 col-md-6 col-lg-3">
-                    <div class="card stat-card shadow-sm">
-                        <div class="card-body paper-bg border-style-2">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <p class="text-muted mb-2">Produits Inisponibles</p>
-                                    <h3 class="mb-0"><?php echo $unavailableProducts; ?></h3>
-                                </div>
-                                <div class="stat-icon bg-danger-light border-style-1">
-                                    <i class='bx bx-x-circle' style="color: var(--bs-danger); font-size: 24px;"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-12 col-md-6 col-lg-3">
-                    <div class="card stat-card shadow-sm">
-                        <div class="card-body paper-bg border-style-2">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <p class="text-muted mb-2">Total Commandes</p>
-                                    <h3 class="mb-0"><?php echo $totalOrders; ?></h3>
-                                </div>
-                                <div class="stat-icon bg-warning-light border-style-1">
-                                    <i class='bx bx-cart' style="color: var(--bs-blue); font-size: 24px;"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <main class="admin-main flex-shrink-0">
+        <div class="admin-header container">
+            <div>
+                <h1 class="admin-title">Tableau de bord</h1>
+                <p class="admin-subtitle">
+                    Vue d’ensemble de votre boutique : produits, utilisateurs et commandes en temps réel.
+                </p>
             </div>
-
-            <!-- Statistiques des utilisateurs et commandes -->
-            <div class="row g-4">
-                <div class="col-12 col-lg-6">
-                    <div class="card shadow-sm">
-                        <div class="card-body border-style-1">
-                            <h5 class="card-title mb-4">État des Utilisateurs</h5>
-                            <div class="d-flex justify-content-around text-center">
-                                <div>
-                                    <div class="stat-icon mx-auto bg-purple-light mb-2 border-style-2">
-                                        <i class='bx bx-user-check' style="color: var(--purple); font-size: 24px;"></i>
-                                    </div>
-                                    <h4><?php echo $activeUsers; ?></h4>
-                                    <p class="text-muted">Actifs</p>
-                                </div>
-                                <div>
-                                    <div class="stat-icon mx-auto bg-danger-light mb-2 border-style-2">
-                                        <i class='bx bx-user-x' style="color: var(--bs-danger); font-size: 24px;"></i>
-                                    </div>
-                                    <h4><?php echo $inactiveUsers; ?></h4>
-                                    <p class="text-muted">Inactifs</p>
-                                </div>
-                                <div>
-                                    <div class="stat-icon mx-auto bg-warning-light mb-2 border-style-2">
-                                        <i class='bx bx-group' style="color: var(--bs-warning); font-size: 24px;"></i>
-                                    </div>
-                                    <h4><?php echo $totalUsers; ?></h4>
-                                    <p class="text-muted">Total</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!--<div class="col-12 col-lg-6">
-                    <div class="card shadow-sm">
-                        <div class="card-body border-style-1">
-                            <h5 class="card-title mb-4">État des Commandes</h5>
-                            <div class="d-flex justify-content-around text-center">
-                                <div>
-                                    <div class="stat-icon mx-auto bg-warning-light mb-2 border-style-2">
-                                        <i class='bx bx-time' style="color: var(--bs-warning); font-size: 24px;"></i>
-                                    </div>
-                                    <h4><?php echo $processingOrders; ?></h4>
-                                    <p class="text-muted">En cours</p>
-                                </div>
-                                <div>
-                                    <div class="stat-icon mx-auto bg-success-light mb-2 border-style-2">
-                                        <i class='bx bx-check-double' style="color: var(--bs-success); font-size: 24px;"></i>
-                                    </div>
-                                    <h4><?php echo $validatedOrders; ?></h4>
-                                    <p class="text-muted">Validées</p>
-                                </div>
-                                <div>
-                                    <div class="stat-icon mx-auto bg-danger-light mb-2 border-style-2">
-                                        <i class='bx bx-x' style="color: var(--bs-danger); font-size: 24px;"></i>
-                                    </div>
-                                    <h4><?php echo $canceledOrders; ?></h4>
-                                    <p class="text-muted">Annulées</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>-->
+            <div class="admin-header-badge">
+                <i class='bx bx-time-five'></i>
+                <span><?php echo date('d/m/Y'); ?></span>
             </div>
         </div>
+
+        <section class="admin-section container">
+            <div class="admin-stats-grid">
+                <article class="admin-stat-card">
+                    <div class="admin-stat-icon admin-stat-icon-primary">
+                        <i class='bx bx-box'></i>
+                    </div>
+                    <div class="admin-stat-content">
+                        <p class="admin-stat-label">Total produits</p>
+                        <p class="admin-stat-value"><?php echo $totalProducts; ?></p>
+                    </div>
+                </article>
+
+                <article class="admin-stat-card">
+                    <div class="admin-stat-icon admin-stat-icon-success">
+                        <i class='bx bx-check-circle'></i>
+                    </div>
+                    <div class="admin-stat-content">
+                        <p class="admin-stat-label">Produits disponibles</p>
+                        <p class="admin-stat-value"><?php echo $availableProducts; ?></p>
+                    </div>
+                </article>
+
+                <article class="admin-stat-card">
+                    <div class="admin-stat-icon admin-stat-icon-warning">
+                        <i class='bx bx-block'></i>
+                    </div>
+                    <div class="admin-stat-content">
+                        <p class="admin-stat-label">Produits indisponibles</p>
+                        <p class="admin-stat-value"><?php echo $unavailableProducts; ?></p>
+                    </div>
+                </article>
+
+                <article class="admin-stat-card">
+                    <div class="admin-stat-icon admin-stat-icon-info">
+                        <i class='bx bx-cart'></i>
+                    </div>
+                    <div class="admin-stat-content">
+                        <p class="admin-stat-label">Total commandes</p>
+                        <p class="admin-stat-value"><?php echo $totalOrders; ?></p>
+                    </div>
+                </article>
+            </div>
+
+            <div class="admin-grid-2">
+                <section class="admin-panel">
+                    <header class="admin-panel-header">
+                        <h2>Produits</h2>
+                        <a href="products/index.php" class="admin-link">
+                            Voir tous les produits <i class='bx bx-chevron-right'></i>
+                        </a>
+                    </header>
+                    <p class="admin-panel-text">
+                        Gérez votre catalogue, les prix par pays et la disponibilité des produits.
+                    </p>
+                    <ul class="admin-keypoints">
+                        <li><i class='bx bx-check'></i> <?php echo $availableProducts; ?> produits actuellement disponibles</li>
+                        <li><i class='bx bx-error-circle'></i> <?php echo $unavailableProducts; ?> produits à réapprovisionner</li>
+                        <li><i class='bx bx-cog'></i> Gestion centralisée des prix par pays</li>
+                    </ul>
+                </section>
+
+                <section class="admin-panel">
+                    <header class="admin-panel-header">
+                        <h2>Utilisateurs &amp; commandes</h2>
+                        <a href="orders/index.php" class="admin-link">
+                            Gérer les commandes <i class='bx bx-chevron-right'></i>
+                        </a>
+                    </header>
+
+                    <div class="admin-users-orders">
+                        <div class="admin-users-block">
+                            <p class="admin-small-label">Utilisateurs</p>
+                            <p class="admin-users-line">
+                                <strong><?php echo $activeUsers; ?></strong> actifs /
+                                <strong><?php echo $inactiveUsers; ?></strong> inactifs sur
+                                <strong><?php echo $totalUsers; ?></strong> au total
+                            </p>
+                            <a href="users/index.php" class="admin-chip-link">
+                                Gérer les utilisateurs
+                            </a>
+                        </div>
+
+                        <div class="admin-orders-block">
+                            <p class="admin-small-label">Commandes</p>
+                            <p class="admin-orders-line">
+                                Suivez les nouvelles commandes, les relances, les livraisons du jour et l’historique.
+                            </p>
+                            <a href="orders/index.php#pane-to-process" class="admin-chip-link">
+                                Voir les commandes à traiter
+                            </a>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </section>
     </main>
 
     <?php include '../includes/footer.php'; ?>
+    <script src="../assets/js/bootstrap.bundle.min.js"></script>
 </body>
-<script src="../assets/js/bootstrap.bundle.min.js"></script>
 
 </html>

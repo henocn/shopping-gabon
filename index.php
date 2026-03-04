@@ -35,12 +35,7 @@ $characteristics = $productManager->getProductCharacteristics($productId);
 $videos = $productManager->getProductVideos($productId);
 $packs = $productManager->getProductPacks($productId);
 
-$basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
-if ($basePath === '/') {
-    $basePath = '';
-}
-
-
+// Convertit un code pays (FR, US...) en entité drapeau HTML
 function countryCodeToFlagEntity($code)
 {
     $code = strtoupper(trim($code));
@@ -86,7 +81,7 @@ $displayDescription = $product['description'];
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Almarai:wght@300;400;500;700&display=swap">
-    <link rel="stylesheet" href="<?= $basePath ?>/assets/css/index.css">
+    <link rel="stylesheet" href="./assets/css/index.css">
 </head>
 
 <body class="page-storefront">
@@ -95,7 +90,7 @@ $displayDescription = $product['description'];
         <nav class="yc-navbar container">
             <div class="logo">
                 <a href="/" aria-label="home">
-                    <img src="<?= $basePath ?>/assets/images/idx121.png" alt="TUBKAL MARKET">
+                    <img src="assets/images/logo.jpg" alt="TUBKAL MARKET">
                 </a>
             </div>
             <div class="corner">
@@ -185,7 +180,7 @@ $displayDescription = $product['description'];
     <footer>
         <div class="columns container">
             <div class="column logo">
-                <img src="<?= $basePath ?>/assets/images/logo.jpg" alt="luxemarket MARKET" width="110" height="70">
+                <img src="assets/images/logo.jpg" alt="luxemarket MARKET" width="110" height="70">
             </div>
             <div class="column">
                 <h1>À propos</h1>
@@ -205,10 +200,10 @@ $displayDescription = $product['description'];
         </div>
     </footer>
 
-    <script src="<?= $basePath ?>/assets/js/tracking-manager.js" defer></script>
+    <script src="assets/js/tracking-manager.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="<?= $basePath ?>/assets/js/bootstrap.bundle.min.js"></script>
-    <script src="<?= $basePath ?>/assets/js/index.js"></script>
+    <script src="assets/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/index.js"></script>
 
     <script>
         (function() {

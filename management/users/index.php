@@ -26,7 +26,7 @@ $users = $user->getAllUsers();
     <title>Users Management</title>
     <link href="../../assets/css/bootstrap.min.css" rel="stylesheet">
     <link href="../../assets/css/index.css" rel="stylesheet">
-    <link href="../../assets/css/users.css" rel="stylesheet">
+    <link href="../../assets/css/admin.css" rel="stylesheet">
     <link href="../../assets/css/navbar.css" rel="stylesheet" />
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
 </head>

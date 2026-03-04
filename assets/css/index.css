@@ -73,11 +73,66 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    background-color: var(--magenta);
+    background: radial-gradient(circle at top left, #fdf2e9 0, #f4ecff 40%, #f1e7ff 100%);
+    color: #1f2933;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 h1, h2, h3, h4, h5, h6 {
     color: var(--purple);
+    font-weight: 600;
+}
+
+main.container,
+main .container,
+.container.my-4 {
+    max-width: 1200px;
+}
+
+.card,
+.table-container,
+.modal-content {
+    border-radius: 16px;
+    border: 1px solid rgba(24, 4, 53, 0.06);
+    box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
+    background: #ffffff;
+}
+
+.table-container {
+    padding: 1.5rem;
+}
+
+.table > :not(caption) > * > * {
+    padding: 0.9rem 1rem;
+    vertical-align: middle;
+}
+
+.btn,
+.btn-primary,
+.btn-outline-primary {
+    border-radius: 999px;
+    font-weight: 500;
+    padding-inline: 1.25rem;
+}
+
+.btn-primary {
+    background: var(--purple);
+    border-color: var(--purple);
+}
+
+.btn-primary:hover {
+    background: #3b215f;
+    border-color: #3b215f;
+}
+
+.btn-outline-primary {
+    color: var(--purple);
+    border-color: rgba(24, 4, 53, 0.3);
+}
+
+.btn-outline-primary:hover {
+    background: rgba(24, 4, 53, 0.08);
+    border-color: var(--purple);
 }
 
 

@@ -27,10 +27,9 @@ $countries = $countryStmt->fetchAll(PDO::FETCH_ASSOC);
     <title>Ajouter un produit</title>
     <link href="../../assets/css/bootstrap.min.css" rel="stylesheet">
     <link href="../../assets/css/index.css" rel="stylesheet">
-    <link href="../../assets/css/products.css" rel="stylesheet">
+    <link href="../../assets/css/admin.css" rel="stylesheet">
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <link href="../../assets/css/navbar.css" rel="stylesheet">
-    <link href="../../assets/css/add-product.css" rel="stylesheet">
     <script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
 </head>
 
@@ -65,15 +64,9 @@ $countries = $countryStmt->fetchAll(PDO::FETCH_ASSOC);
                 <div class="card-body">
                     <div class="mb-3">
                         <label class="form-label">
-                            <i class='bx bx-purchase-tag'></i> Nom du produit (FR)
+                            <i class='bx bx-purchase-tag'></i> Nom du produit
                         </label>
                         <input type="text" class="form-control" name="name" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">
-                            <i class='bx bx-purchase-tag'></i> Nom du produit (AR)
-                        </label>
-                        <input type="text" class="form-control" name="ar_name">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">
@@ -134,15 +127,9 @@ $countries = $countryStmt->fetchAll(PDO::FETCH_ASSOC);
                     </div>
                     <div class="mb-3">
                         <label class="form-label">
-                            <i class='bx bx-text'></i> Description (FR)
+                            <i class='bx bx-text'></i> Description
                         </label>
                         <textarea id="summernote" class="form-control" name="description" rows="4"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">
-                            <i class='bx bx-text'></i> Description (AR)
-                        </label>
-                        <textarea id="summernote-ar" class="form-control" name="ar_description" rows="4"></textarea>
                     </div>
                 </div>
             </div>
@@ -236,7 +223,6 @@ $countries = $countryStmt->fetchAll(PDO::FETCH_ASSOC);
     <script>
         $(document).ready(function() {
             $('#summernote').summernote();
-            $('#summernote-ar').summernote();
             
             // Toggle price input visibility based on checkbox
             document.querySelectorAll('input[name="country_ids[]"]').forEach(checkbox => {

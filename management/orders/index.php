@@ -34,10 +34,9 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
       <link rel="preload" href="https://unpkg.com/boxicons@2.1.4/fonts/boxicons.woff2" as="font" type="font/woff2" crossorigin>
       <link href="../../assets/css/bootstrap.min.css" rel="stylesheet">
       <link href="../../assets/css/index.css" rel="stylesheet">
+      <link href="../../assets/css/admin.css" rel="stylesheet">
       <link href="../../assets/css/navbar.css" rel="stylesheet">
       <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-      <link href="../../assets/css/order.css" rel="stylesheet">
-      <link href="../../assets/css/orders.css" rel="stylesheet">
 </head>
 
 <body>

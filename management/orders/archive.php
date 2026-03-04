@@ -36,27 +36,9 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
       <link rel="preload" href="https://unpkg.com/boxicons@2.1.4/fonts/boxicons.woff2" as="font" type="font/woff2" crossorigin>
       <link href="../../assets/css/bootstrap.min.css" rel="stylesheet">
       <link href="../../assets/css/index.css" rel="stylesheet">
+      <link href="../../assets/css/admin.css" rel="stylesheet">
       <link href="../../assets/css/navbar.css" rel="stylesheet">
       <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
-      <link href="../../assets/css/orders.css" rel="stylesheet">
-      <style>
-            .stats-card {
-                  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                  color: white;
-                  border-radius: 5px;
-                  padding: 10px;
-                  margin-bottom: 10px;
-            }
-            .search-box {
-                  margin-bottom: 20px;
-            }
-            .table-container {
-                  background: white;
-                  border-radius: 10px;
-                  padding: 20px;
-                  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            }
-      </style>
 </head>
 
 <body>

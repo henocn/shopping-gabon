@@ -26,7 +26,7 @@ $products = $product->getAllProducts();
     <title>Products Management</title>
     <link href="../../assets/css/bootstrap.min.css" rel="stylesheet">
     <link href="../../assets/css/index.css" rel="stylesheet">
-    <link href="../../assets/css/products.css" rel="stylesheet">
+    <link href="../../assets/css/admin.css" rel="stylesheet">
     <link href="../../assets/css/navbar.css" rel="stylesheet" />
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
 </head>
@@ -68,9 +68,6 @@ $products = $product->getAllProducts();
                             </td>
                             <td>
                                 <?php echo htmlspecialchars($prod['name']); ?>
-                                <?php if (!empty($prod['ar_name'])): ?>
-                                    <br><small class="text-muted"><?php echo htmlspecialchars($prod['ar_name']); ?></small>
-                                <?php endif; ?>
                             </td>
                             <td>
                                 <?php if (!empty($countries)): ?>

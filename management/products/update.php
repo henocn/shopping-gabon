@@ -49,29 +49,10 @@ $productCountries = $manager->getProductCountries($productId);
     <title>Modifier un produit</title>
     <link href="../../assets/css/bootstrap.min.css" rel="stylesheet">
     <link href="../../assets/css/index.css" rel="stylesheet">
-    <link href="../../assets/css/products.css" rel="stylesheet">
+    <link href="../../assets/css/admin.css" rel="stylesheet">
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <link href="../../assets/css/navbar.css" rel="stylesheet">
-    <link href="../../assets/css/add-product.css" rel="stylesheet">
     <script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
-    <style>
-        .existing-media {
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            padding: 10px;
-            margin-bottom: 10px;
-        }
-
-        .existing-media img {
-            max-width: 100px;
-            max-height: 100px;
-            margin-right: 10px;
-        }
-
-        .delete-checkbox {
-            margin-top: 10px;
-        }
-    </style>
 </head>
 
 <body>
@@ -107,15 +88,9 @@ $productCountries = $manager->getProductCountries($productId);
                 <div class="card-body">
                     <div class="mb-3">
                         <label class="form-label">
-                            <i class='bx bx-purchase-tag'></i> Nom du produit (FR)
+                            <i class='bx bx-purchase-tag'></i> Nom du produit
                         </label>
                         <input type="text" class="form-control" name="name" value="<?= htmlspecialchars($product['name']) ?>" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">
-                            <i class='bx bx-purchase-tag'></i> Nom du produit (AR)
-                        </label>
-                        <input type="text" class="form-control" name="ar_name" value="<?= htmlspecialchars($product['ar_name'] ?? '') ?>">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">
@@ -201,15 +176,9 @@ $productCountries = $manager->getProductCountries($productId);
                     </div>
                     <div class="mb-3">
                         <label class="form-label">
-                            <i class='bx bx-text'></i> Description (FR)
+                            <i class='bx bx-text'></i> Description
                         </label>
                         <textarea id="summernote" class="form-control" name="description" rows="4"><?= htmlspecialchars($product['description']) ?></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">
-                            <i class='bx bx-text'></i> Description (AR)
-                        </label>
-                        <textarea id="summernote-ar" class="form-control" name="ar_description" rows="4"><?= htmlspecialchars($product['ar_description'] ?? '') ?></textarea>
                     </div>
                 </div>
             </div>
