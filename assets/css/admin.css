@@ -94,6 +94,14 @@
     font-weight: 600;
 }
 
+/* Titres de sections dans les onglets commandes */
+.orders-section-title {
+    font-size: .95rem;
+    font-weight: 600;
+    color: var(--purple);
+    margin: 0 0 .35rem;
+}
+
 /* En-tête page liste (produits, etc.) */
 .admin-page-header .admin-title {
     font-size: 1.4rem;

@@ -112,9 +112,8 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
             <div class="tab-content" id="ordersTabsContent">
                   <!-- Onglet À traiter -->
                   <div class="tab-pane fade show active" id="pane-to-process" role="tabpanel">
-                        <div class="row mt-3">
+                        <div class="row">
                               <div class="col-12">
-                                    <h6>Commandes à traiter (<span id="order-count"><?= count($groupedOrders['to-process']) ?></span>)</h6>
                                     <?php if (empty($groupedOrders['to-process'])): ?>
                                           <p class="text-muted">Aucune commande à traiter.</p>
                                     <?php else: ?>
@@ -216,9 +215,8 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
 
                   <!-- Onglet Injoignable -->
                   <div class="tab-pane fade" id="pane-unreachable" role="tabpanel">
-                        <div class="row mt-3">
+                        <div class="row">
                               <div class="col-12">
-                                    <h6>Clients injoignables (<?= count($groupedOrders['unreachable']) ?>)</h6>
                                     <?php if (empty($groupedOrders['unreachable'])): ?>
                                           <p class="text-muted">Aucune commande injoignable.</p>
                                     <?php else: ?>
@@ -273,9 +271,8 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
 
                   <!-- Onglet Programmer -->
                   <div class="tab-pane fade" id="pane-processing" role="tabpanel">
-                        <div class="row mt-3">
+                        <div class="row">
                               <div class="col-12">
-                                    <h6>Commandes programmées (<?= count($groupedOrders['processing']) ?>)</h6>
                                     <?php if (empty($groupedOrders['processing'])): ?>
                                           <p class="text-muted">Aucune commande programmée.</p>
                                     <?php else: ?>
@@ -354,9 +351,8 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
 
                   <!-- Onglet Livrées aujourd'hui -->
                   <div class="tab-pane fade" id="pane-delivered" role="tabpanel">
-                        <div class="row mt-3">
-                              <div class="col-12">
-                                    <h6>Commandes livrées aujourd'hui (<?= count($groupedOrders['delivered']) ?>)</h6>
+                        <div class="row">
+                              <div class="col-12">          
                                     <?php if (empty($groupedOrders['delivered'])): ?>
                                           <p class="text-muted">Aucune commande livrée aujourd'hui.</p>
                                     <?php else: ?>
