@@ -94,7 +94,7 @@ $displayDescription = $product['description'];
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Almarai:wght@300;400;500;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap">
     <link rel="stylesheet" href="./assets/css/index.css">
 </head>
 
@@ -114,7 +114,7 @@ $displayDescription = $product['description'];
     </header>
 
     <main class="main-content">
-        <section class="container product-layout">
+        <section class="container product-layout" aria-label="Détails du produit">
             <!-- Images -->
             <div class="product-images">
                 <div class="main-image-wrapper">
@@ -135,26 +135,32 @@ $displayDescription = $product['description'];
             <!-- Details + Form -->
             <div class="product-details" id="product_details">
                 <h1 class="product-name"><?= htmlspecialchars($displayTitle); ?></h1>
-                <h2 class="product-price"><?= ($displayPrice) ?> CFA</h2>
+                <div class="product-price-block">
+                    <span class="product-price-label">Prix pour votre pays</span>
+                    <p class="product-price">
+                        <span id="display-price" data-price="<?= (int)$displayPrice ?>"><?= number_format($displayPrice, 0, ',', ' '); ?></span> <span class="product-currency">FCFA</span>
+                    </p>
+                </div>
                 <form class="express-checkout-form" method="POST" action="management/orders/save.php">
                     <div class="express-checkout-fields">
                         <input type="text" name="client_name" class="form-control-custom"
                             placeholder="Nom complet" required>
                         <div class="phone-input-wrapper">
-                            <select name="client_country" class="form-control-country" required>
+                            <select name="client_country" id="client_country_select" class="form-control-country" required aria-label="Pays (indicatif)">
                                 <?php foreach ($productCountries as $ctry): ?>
                                     <?php
                                     $flag = countryCodeToFlagEntity($ctry['code'] ?? '');
                                     $isSelected = ($selectedCountryId !== null && (int)$ctry['id'] === $selectedCountryId);
                                     ?>
-                                    <option value="<?= htmlspecialchars($ctry['id']); ?>" <?= $isSelected ? 'selected' : ''; ?>>
-                                        <?= $flag ? $flag . ' ' : '' ?><?= htmlspecialchars($ctry['phone_code']); ?>
+                                    <option value="<?= (int)$ctry['id']; ?>" data-price="<?= (int)($ctry['selling_price'] ?? 0); ?>" <?= $isSelected ? 'selected' : ''; ?>>
+                                        <?= $flag ? $flag . ' ' : '' ?><?= htmlspecialchars($ctry['phone_code'] ?? ''); ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
                             <input type="tel" name="client_phone" class="form-control-custom"
                                 placeholder="Numéro" required>
                         </div>
+                        <small class="form-hint">Le prix ci-dessus s’adapte au pays sélectionné.</small>
                         <input type="text" name="client_adress" class="form-control-custom"
                             placeholder="Ville, Quartier" required>
                         <textarea name="client_note" class="form-control-custom" rows="2"
@@ -439,6 +445,28 @@ $displayDescription = $product['description'];
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            var countrySelect = document.getElementById('client_country_select');
+            var displayPriceEl = document.getElementById('display-price');
+            if (countrySelect && displayPriceEl) {
+                function formatPrice(n) {
+                    return Number(n).toLocaleString('fr-FR', { maximumFractionDigits: 0 });
+                }
+                function updatePriceFromCountry() {
+                    var opt = countrySelect.options[countrySelect.selectedIndex];
+                    if (!opt) return;
+                    var price = parseInt(opt.getAttribute('data-price'), 10) || 0;
+                    displayPriceEl.textContent = formatPrice(price);
+                    displayPriceEl.setAttribute('data-price', price);
+                    var baseUrl = window.location.pathname + '?id=<?= (int)$product["id"] ?>';
+                    var countryId = opt.value;
+                    var newUrl = baseUrl + (countryId ? '&country=' + encodeURIComponent(countryId) : '');
+                    if (window.history && window.history.replaceState) {
+                        window.history.replaceState(null, '', newUrl);
+                    }
+                }
+                countrySelect.addEventListener('change', updatePriceFromCountry);
+            }
+
             setTimeout(function() {
                 trackWhenReady('QualifiedVisit', {
                     content_ids: ['<?= $product['id']; ?>'],
@@ -638,16 +666,16 @@ $displayDescription = $product['description'];
                     }
 
                     if (!purchasePayload.content_ids) {
-                        // Pas de pack: utiliser le produit simple
+                        var currentPrice = (displayPriceEl && parseInt(displayPriceEl.getAttribute('data-price'), 10)) || <?= (int)$displayPrice; ?>;
                         purchasePayload.content_ids = ['<?= $product['id']; ?>'];
                         purchasePayload.content_type = 'product';
                         purchasePayload.contents = [{
                             id: '<?= $product['id']; ?>',
                             quantity: 1,
-                            item_price: <?= $displayPrice; ?>
+                            item_price: currentPrice
                         }];
                         purchasePayload.num_items = 1;
-                        purchasePayload.value = <?= $displayPrice; ?>;
+                        purchasePayload.value = currentPrice;
                     }
 
                     // Envoyer uniquement l'événement Purchase (conseillé par Facebook)
@@ -685,17 +713,18 @@ $displayDescription = $product['description'];
         });
 
         function openOrderForm() {
-            // InitiateCheckout au clic sur bouton Commander (specs Facebook)
+            var displayPriceEl = document.getElementById('display-price');
+            var currentPrice = (displayPriceEl && parseInt(displayPriceEl.getAttribute('data-price'), 10)) || <?= (int)$displayPrice; ?>;
             trackWhenReady('InitiateCheckout', {
                 content_ids: ['<?= $product['id']; ?>'],
                 contents: [{
                     'id': '<?= $product['id']; ?>',
                     'quantity': 1,
-                    'item_price': <?= $displayPrice; ?>
+                    'item_price': currentPrice
                 }],
                 currency: 'XOF',
                 num_items: 1,
-                value: <?= $displayPrice; ?>
+                value: currentPrice
             });
 
             var modalElement = document.getElementById('orderModal');
