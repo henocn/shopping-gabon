@@ -114,25 +114,6 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   <div class="tab-pane fade show active" id="pane-to-process" role="tabpanel">
                         <div class="row mt-3">
                               <div class="col-12">
-                                    <!-- Champ de recherche/filtrage compact -->
-                                    <div class="card mb-3 search-compact">
-                                          <div class="card-body p-2">
-                                                <div class="row g-2 align-items-end">
-                                                      <div class="col-md-7">
-                                                            <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="🔍 Rechercher par nom, téléphone ou produit...">
-                                                      </div>
-                                                      <div class="col-md-5">
-                                                            <select class="form-select form-select-sm" id="statusFilter">
-                                                                  <option>--Filtrer--</option>
-                                                                  <option value="all">Tous</option>
-                                                                  <option value="new">Nouvelles</option>
-                                                                  <option value="remind">Rappeler</option>
-                                                            </select>
-                                                      </div>
-                                                </div>
-                                          </div>
-                                    </div>
-
                                     <h6>Commandes à traiter (<span id="order-count"><?= count($groupedOrders['to-process']) ?></span>)</h6>
                                     <?php if (empty($groupedOrders['to-process'])): ?>
                                           <p class="text-muted">Aucune commande à traiter.</p>
@@ -237,17 +218,6 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   <div class="tab-pane fade" id="pane-unreachable" role="tabpanel">
                         <div class="row mt-3">
                               <div class="col-12">
-                                    <!-- Champ de recherche -->
-                                    <div class="card mb-3 search-compact">
-                                          <div class="card-body p-2">
-                                                <div class="row g-2 align-items-end">
-                                                      <div class="col-md-12">
-                                                            <input type="text" class="form-control form-control-sm" id="searchInputUnreachable" placeholder="🔍 Rechercher par nom, téléphone ou produit...">
-                                                      </div>
-                                                </div>
-                                          </div>
-                                    </div>
-
                                     <h6>Clients injoignables (<?= count($groupedOrders['unreachable']) ?>)</h6>
                                     <?php if (empty($groupedOrders['unreachable'])): ?>
                                           <p class="text-muted">Aucune commande injoignable.</p>
@@ -305,17 +275,6 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   <div class="tab-pane fade" id="pane-processing" role="tabpanel">
                         <div class="row mt-3">
                               <div class="col-12">
-                                    <!-- Champ de recherche -->
-                                    <div class="card mb-3 search-compact">
-                                          <div class="card-body p-2">
-                                                <div class="row g-2 align-items-end">
-                                                      <div class="col-md-12">
-                                                            <input type="text" class="form-control form-control-sm" id="searchInputProcessing" placeholder="🔍 Rechercher par nom, téléphone ou produit...">
-                                                      </div>
-                                                </div>
-                                          </div>
-                                    </div>
-
                                     <h6>Commandes programmées (<?= count($groupedOrders['processing']) ?>)</h6>
                                     <?php if (empty($groupedOrders['processing'])): ?>
                                           <p class="text-muted">Aucune commande programmée.</p>
@@ -397,17 +356,6 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   <div class="tab-pane fade" id="pane-delivered" role="tabpanel">
                         <div class="row mt-3">
                               <div class="col-12">
-                                    <!-- Champ de recherche -->
-                                    <div class="card mb-3 search-compact">
-                                          <div class="card-body p-2">
-                                                <div class="row g-2 align-items-end">
-                                                      <div class="col-md-12">
-                                                            <input type="text" class="form-control form-control-sm" id="searchInputDelivered" placeholder="🔍 Rechercher par nom, téléphone ou produit...">
-                                                      </div>
-                                                </div>
-                                          </div>
-                                    </div>
-
                                     <h6>Commandes livrées aujourd'hui (<?= count($groupedOrders['delivered']) ?>)</h6>
                                     <?php if (empty($groupedOrders['delivered'])): ?>
                                           <p class="text-muted">Aucune commande livrée aujourd'hui.</p>

@@ -135,9 +135,9 @@
 }
 
 .admin-btn-primary {
-    background: linear-gradient(135deg, var(--secondary), var(--primary));
-    border: none;
-    color: var(--paper);
+    background: var(--primary);
+    border: 1px solid var(--primary);
+    color: #fff;
     border-radius: 12px;
     padding-inline: .9rem;
     font-size: .8rem;
@@ -147,7 +147,8 @@
 }
 
 .admin-btn-primary:hover {
-    filter: brightness(1.05);
+    background: var(--secondary);
+    border-color: var(--secondary);
 }
 
 .admin-btn-ghost {

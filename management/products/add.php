@@ -26,18 +26,28 @@ $countries = $countryStmt->fetchAll(PDO::FETCH_ASSOC);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ajouter un produit</title>
     <link href="../../assets/css/bootstrap.min.css" rel="stylesheet">
-    <link href="../../assets/css/index.css" rel="stylesheet">
+    <link href="../../assets/css/index.css" rel="stylesheet">       
     <link href="../../assets/css/admin.css" rel="stylesheet">
-    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
     <link href="../../assets/css/navbar.css" rel="stylesheet">
-    <script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
 </head>
 
 <body>
     <?php include '../../includes/navbar.php'; ?>
 
-    <main class="container my-4">
-        <h2 class="mb-4 text-center">Ajouter un nouveau produit</h2>
+    <main class="admin-main container my-4">
+        <div class="admin-page-header d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h1 class="admin-title mb-1">Nouveau produit</h1>
+                <p class="admin-subtitle mb-0">
+                    Ajoutez un produit, définissez ses prix par pays et assignez les managers.
+                </p>
+            </div>
+            <a href="index.php" class="btn btn-sm btn-outline-secondary">
+                <i class='bx bx-arrow-back'></i>
+                <span>Retour à la liste</span>
+            </a>
+        </div>
 
         <form id="productForm" enctype="multipart/form-data" class="form-container" method="POST" action="save.php">
             <!-- Champs cachés pour les images -->
@@ -102,14 +112,19 @@ $countries = $countryStmt->fetchAll(PDO::FETCH_ASSOC);
                         <label class="form-label">
                             <i class='bx bx-flag'></i> Pays de vente (sélection multiple)
                         </label>
-                        <div style="border: 1px solid #dee2e6; border-radius: 0.375rem; padding: 10px; max-height: 200px; overflow-y: auto;">
+                        <div class="admin-country-box">
                             <?php foreach ($countries as $country) { ?>
-                                <div class="form-check">
+                                <div class="form-check d-flex align-items-center mb-1">
                                     <input class="form-check-input" type="checkbox" name="country_ids[]" value="<?= $country['id'] ?>" id="country_<?= $country['id'] ?>">
-                                    <label class="form-check-label" for="country_<?= $country['id'] ?>">
+                                    <label class="form-check-label ms-1" for="country_<?= $country['id'] ?>">
                                         <?= htmlspecialchars($country['code'] . ' - ' . $country['name']) ?>
                                     </label>
-                                    <input type="number" class="form-control form-control-sm" placeholder="Prix de vente" name="country_prices[<?= $country['id'] ?>]" style="display:none; width: 120px; margin-left: 20px;" id="price_<?= $country['id'] ?>">
+                                    <input type="number"
+                                           class="form-control form-control-sm ms-2 admin-country-price-input"
+                                           placeholder="Prix de vente"
+                                           name="country_prices[<?= $country['id'] ?>]"
+                                           style="display:none;"
+                                           id="price_<?= $country['id'] ?>">
                                 </div>
                             <?php } ?>
                         </div>
@@ -162,7 +177,7 @@ $countries = $countryStmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
                 <div class="card-body">
                     <div id="characteristics">
-                        <button type="button" class="btn mb-3" onclick="addCharacteristic()" style="background: var(--secondary); color: white;">
+                        <button type="button" class="btn admin-section-btn mb-3" onclick="addCharacteristic()">
                             <i class='bx bx-plus'></i> Ajouter une caractéristique
                         </button>
                         <div id="characteristicsList"></div>
@@ -178,7 +193,7 @@ $countries = $countryStmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
                 <div class="card-body">
                     <div id="videos">
-                        <button type="button" class="btn mb-3" onclick="addVideo()" style="background: var(--secondary); color: white;">
+                        <button type="button" class="btn admin-section-btn mb-3" onclick="addVideo()">
                             <i class='bx bx-plus'></i> Ajouter une vidéo
                         </button>
                         <div id="videosList"></div>
@@ -194,7 +209,7 @@ $countries = $countryStmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
                 <div class="card-body">
                     <div id="packs">
-                        <button type="button" class="btn mb-3" onclick="addPack()" style="background: var(--secondary); color: white;">
+                        <button type="button" class="btn admin-section-btn mb-3" onclick="addPack()">
                             <i class='bx bx-package'></i> Ajouter un pack
                         </button>
                         <div id="packsList"></div>
@@ -202,8 +217,11 @@ $countries = $countryStmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
             </div>
 
-            <div class="d-grid">
-                <input type="submit" value="Enregistrer le produit" name="valider" class="btn" style="background: var(--primary); color: white;">
+            <div class="d-flex justify-content-end mt-3">
+                <button type="submit" name="valider" value="Enregistrer le produit" class="btn admin-btn-primary">
+                    <i class='bx bx-save'></i>
+                    <span>Enregistrer le produit</span>
+                </button>
             </div>
         </form>
     </main>
@@ -214,10 +232,7 @@ $countries = $countryStmt->fetchAll(PDO::FETCH_ASSOC);
 
     <script src="../../assets/js/bootstrap.bundle.min.js"></script>
     <script src="../../assets/js/add-product.js"></script>
-
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote.min.js"></script>
     <script>
