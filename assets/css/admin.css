@@ -552,6 +552,11 @@
   border-bottom-color: var(--purple);
 }
 
+.nav-tabs .badge {
+  background-color: var(--secondary) !important;
+  color: var(--purple) !important;
+}
+
 /* Style global du tableau commandes */
 #orders-table thead th {
   background-color: var(--purple);
