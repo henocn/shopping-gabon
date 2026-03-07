@@ -192,14 +192,8 @@
     background: rgba(249,250,251,0.9);
 }
 
-/* Conteneurs de tableaux admin (produits, utilisateurs, commandes) */
-.table-container {
-    background: #ffffff;
-    border-radius: 16px;
-    padding: 0;
-}
 
-.table-container .table > :not(caption) > * > * {
+.table > :not(caption) > * > * {
     padding: 0.9rem 1rem;
     vertical-align: middle;
 }
@@ -213,20 +207,20 @@
 }
 
 /* Lignes actives / inactives (utilisateurs, etc.) */
-.table-container .table tr.status-active td {
+.table tr.status-active td {
     background: rgba(159, 216, 176, 0.18);
 }
 
-.table-container .table tr.status-inactive td {
+.table tr.status-inactive td {
     background: rgba(255, 154, 154, 0.18);
 }
 
-.table-container .table tr.status-active:hover td {
+.table tr.status-active:hover td {
     background: rgba(159, 216, 176, 0.28);
     cursor: pointer;
 }
 
-.table-container .table tr.status-inactive:hover td {
+.table tr.status-inactive:hover td {
     background: rgba(255, 154, 154, 0.26);
     cursor: pointer;
 }

@@ -90,16 +90,11 @@ main .container,
 }
 
 .card,
-.table-container,
 .modal-content {
     border-radius: 16px;
     border: 1px solid rgba(24, 4, 53, 0.06);
     box-shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
     background: #ffffff;
-}
-
-.table-container {
-    padding: 1.5rem;
 }
 
 .table > :not(caption) > * > * {

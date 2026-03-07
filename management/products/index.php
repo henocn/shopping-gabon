@@ -61,7 +61,6 @@ $products = $product->getAllProducts();
             </div>
         </div>
 
-        <div class="table-container admin-table-panel">
             <table class="table align-middle mb-0" id="productsTable">
                 <thead class="table-light">
                     <tr>
@@ -151,7 +150,6 @@ $products = $product->getAllProducts();
                     <?php endforeach; ?>
                 </tbody>
             </table>
-        </div>
     </main>
 
     <?php include '../../includes/footer.php'; ?>

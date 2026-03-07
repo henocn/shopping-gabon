@@ -46,7 +46,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
       <?php include '../../includes/navbar.php'; ?>
 
       <main class="container-fluid my-4">
-            
+
             <!-- En-tête avec bouton retour -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                   <h4>Livraisons archives : <?= count($deliveredOrders) ?> </h4>
@@ -55,48 +55,46 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   </a>
             </div>
             <!-- Tableau des commandes livrées -->
-            <div class="table-container">
-                  <?php if (empty($deliveredOrders)): ?>
-                        <div class="text-center py-5">
-                              <i class='bx bx-box' style='font-size: 64px; color: #ccc;'></i>
-                              <p class="text-muted mt-3">Aucune commande livrée pour le moment.</p>
-                        </div>
-                  <?php else: ?>
-                        <div class="table-responsive">
-                              <table class="table table-bordered" id="orders-delivered-table">
-                                    <thead>
+            <?php if (empty($deliveredOrders)): ?>
+                  <div class="text-center py-5">
+                        <i class='bx bx-box' style='font-size: 64px; color: #ccc;'></i>
+                        <p class="text-muted mt-3">Aucune commande livrée pour le moment.</p>
+                  </div>
+            <?php else: ?>
+                  <div class="table-responsive">
+                        <table class="table table-bordered" id="orders-delivered-table">
+                              <thead>
+                                    <tr>
+                                          <th scope="col">ID</th>
+                                          <th scope="col">Client</th>
+                                          <th scope="col">Produit</th>
+                                          <th scope="col">Quantité</th>
+                                          <th scope="col">Total</th>
+                                          <th scope="col">Statut</th>
+                                          <th scope="col">Date</th>
+                                    </tr>
+                              </thead>
+                              <tbody>
+                                    <?php foreach ($deliveredOrders as $order): ?>
                                           <tr>
-                                                <th scope="col">ID</th>
-                                                <th scope="col">Client</th>
-                                                <th scope="col">Produit</th>
-                                                <th scope="col">Quantité</th>
-                                                <th scope="col">Total</th>
-                                                <th scope="col">Statut</th>
-                                                <th scope="col">Date</th>
+                                                <td><strong>#<?= htmlspecialchars($order['order_id']) ?></strong></td>
+                                                <td><?= htmlspecialchars($order['client_name']) ?></td>
+                                                <td>
+                                                      <?= htmlspecialchars($order['product_name']) ?>
+                                                      <?php if (!empty($order['pack_name'])): ?>
+                                                            <br><small class="text-muted">(<?= htmlspecialchars($order['pack_name']) ?>)</small>
+                                                      <?php endif; ?>
+                                                </td>
+                                                <td><?= (int)$order['quantity'] ?></td>
+                                                <td><strong><?= number_format($order['total_price'], 0, ',', ' ') ?> FCFA</strong></td>
+                                                <td><span class="badge bg-success">Livré</span></td>
+                                                <td><?= date('d/m/Y H:i', strtotime($order['updated_at'])) ?></td>
                                           </tr>
-                                    </thead>
-                                    <tbody>
-                                          <?php foreach ($deliveredOrders as $order): ?>
-                                                <tr>
-                                                      <td><strong>#<?= htmlspecialchars($order['order_id']) ?></strong></td>
-                                                      <td><?= htmlspecialchars($order['client_name']) ?></td>
-                                                      <td>
-                                                            <?= htmlspecialchars($order['product_name']) ?>
-                                                            <?php if (!empty($order['pack_name'])): ?>
-                                                                  <br><small class="text-muted">(<?= htmlspecialchars($order['pack_name']) ?>)</small>
-                                                            <?php endif; ?>
-                                                      </td>
-                                                      <td><?= (int)$order['quantity'] ?></td>
-                                                      <td><strong><?= number_format($order['total_price'], 0, ',', ' ') ?> FCFA</strong></td>
-                                                      <td><span class="badge bg-success">Livré</span></td>
-                                                      <td><?= date('d/m/Y H:i', strtotime($order['updated_at'])) ?></td>
-                                                </tr>
-                                          <?php endforeach; ?>
-                                    </tbody>
-                              </table>
-                        </div>
-                  <?php endif; ?>
-            </div>
+                                    <?php endforeach; ?>
+                              </tbody>
+                        </table>
+                  </div>
+            <?php endif; ?>
 
       </main>
 
