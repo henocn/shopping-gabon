@@ -26,7 +26,7 @@ class FinanceManager
      */
     public function createExpense($type, $amount, $description = null, $productId = null, $managerId = null, $date = null)
     {
-        $allowedTypes = ['products', 'users', 'campagn', 'others'];
+        $allowedTypes = ['products', 'users', 'campagn', 'others', 'livraison', 'frais'];
         if (!in_array($type, $allowedTypes, true)) {
             throw new Exception('Type de dépense invalide');
         }
@@ -242,6 +242,20 @@ class FinanceManager
         }
     }
 
+    /**
+     * Supprime une dépense par son id.
+     */
+    public function deleteExpense($id)
+    {
+        try {
+            $stmt = $this->pdo->prepare("DELETE FROM depense WHERE id = ?");
+            return $stmt->execute([(int) $id]);
+        } catch (Exception $e) {
+            error_log("Erreur deleteExpense: " . $e->getMessage());
+            return false;
+        }
+    }
+
     // --- Calcul de Rentabilité ---
 
     /**
@@ -361,7 +375,7 @@ class FinanceManager
     }
 
     /**
-     * Récupère les produits les plus rentables pour une période.
+     * Récupère les produits les plus rentables pour une période (coût depuis orders.purchase_price).
      */
     public function getTopProfitableProducts($limit, $dateFrom, $dateTo)
     {
@@ -372,10 +386,10 @@ class FinanceManager
                     p.name,
                     SUM(o.quantity) as units_sold,
                     SUM(o.total_price) as total_revenue,
-                    (SUM(o.total_price) - (SUM(o.quantity) * COALESCE(pcc.current_purchase_price, 0))) as estimated_profit
+                    SUM(o.quantity * o.purchase_price) as total_purchase_cost,
+                    (SUM(o.total_price) - SUM(o.quantity * o.purchase_price)) as estimated_profit
                 FROM orders o
                 JOIN products p ON o.product_id = p.id
-                LEFT JOIN product_current_costs pcc ON p.id = pcc.product_id
                 WHERE o.newstat = 'deliver'
                 AND o.updated_at BETWEEN ? AND ?
                 GROUP BY p.id, p.name
@@ -386,6 +400,84 @@ class FinanceManager
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (Exception $e) {
             error_log("Erreur getTopProfitableProducts: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Résumé ventes / coûts d'achat / dépenses pour une période (sans product_current_costs).
+     */
+    public function getSalesCostsAndExpensesSummary($dateFrom, $dateTo)
+    {
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT 
+                    COALESCE(SUM(total_price), 0) as total_revenue,
+                    COALESCE(SUM(quantity * purchase_price), 0) as total_purchase_cost,
+                    COUNT(*) as orders_delivered
+                FROM orders
+                WHERE newstat = 'deliver'
+                AND updated_at BETWEEN ? AND ?
+            ");
+            $stmt->execute([$dateFrom, $dateTo]);
+            $sales = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            $totalExpenses = $this->getTotalExpenses($dateFrom, $dateTo);
+
+            $revenue = (float) ($sales['total_revenue'] ?? 0);
+            $purchaseCost = (float) ($sales['total_purchase_cost'] ?? 0);
+            $netBeforeExpenses = $revenue - $purchaseCost;
+            $netProfit = $netBeforeExpenses - $totalExpenses;
+            $margin = $revenue > 0 ? ($netProfit / $revenue) * 100 : 0;
+
+            return [
+                'total_revenue' => $revenue,
+                'total_purchase_cost' => $purchaseCost,
+                'total_expenses' => $totalExpenses,
+                'net_before_expenses' => $netBeforeExpenses,
+                'net_profit' => $netProfit,
+                'profit_margin_pct' => $margin,
+                'orders_delivered' => (int) ($sales['orders_delivered'] ?? 0),
+            ];
+        } catch (Exception $e) {
+            error_log("Erreur getSalesCostsAndExpensesSummary: " . $e->getMessage());
+            return [
+                'total_revenue' => 0,
+                'total_purchase_cost' => 0,
+                'total_expenses' => 0,
+                'net_before_expenses' => 0,
+                'net_profit' => 0,
+                'profit_margin_pct' => 0,
+                'orders_delivered' => 0,
+            ];
+        }
+    }
+
+    /**
+     * Chiffre d'affaires et coûts par pays (commandes livrées) pour analyse marché.
+     */
+    public function getRevenueByCountry($dateFrom, $dateTo)
+    {
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT 
+                    c.id,
+                    c.code,
+                    c.name,
+                    COUNT(o.id) as orders_count,
+                    COALESCE(SUM(o.total_price), 0) as total_revenue,
+                    COALESCE(SUM(o.quantity * o.purchase_price), 0) as total_purchase_cost
+                FROM orders o
+                JOIN countries c ON o.client_country = c.id
+                WHERE o.newstat = 'deliver'
+                AND o.updated_at BETWEEN ? AND ?
+                GROUP BY c.id, c.code, c.name
+                ORDER BY total_revenue DESC
+            ");
+            $stmt->execute([$dateFrom, $dateTo]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log("Erreur getRevenueByCountry: " . $e->getMessage());
             return [];
         }
     }

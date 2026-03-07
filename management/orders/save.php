@@ -143,11 +143,11 @@ if (isset($_POST['valider'])) {
                 // Enregistrer les frais de livraison si fournis
                 if ($newStatus === 'deliver' && isset($_POST['delivery_fee']) && $_POST['delivery_fee'] > 0) {
                     $depenseData = [
-                        'type'        => 'products',
+                        'type'        => 'livraison',
                         'product_id'  => (int)$existingOrder['product_id'],
                         'cout'        => (int)$_POST['delivery_fee'],
                         'date'        => date('Y-m-d H:i:s'),
-                        'descrption'  => 'Livraison'
+                        'description' => 'Livraison'
                     ];
                     $depenseManager->createDepense($depenseData);
                 }

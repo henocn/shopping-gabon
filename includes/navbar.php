@@ -49,6 +49,12 @@
                         <span>Utilisateurs</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link <?php echo (strpos($currentPath, '/gestion/') !== false) ? 'active' : ''; ?>" href="/management/gestion/index.php">
+                        <i class='bx bx-wallet'></i>
+                        <span>Gestion</span>
+                    </a>
+                </li>
             </ul>
 
             <!-- Actions utilisateur -->
