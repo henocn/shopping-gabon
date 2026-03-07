@@ -61,8 +61,10 @@ class User
 
     public function getAllUsers(): array
     {
-        $sql = $this->bd->prepare('SELECT `users`.`id`, `users`.`email`, `users`.`name`, `users`.`role`, `users`.`country`, `users`.`is_active`
-            FROM `users`');
+        $sql = $this->bd->prepare('SELECT `users`.`id`, `users`.`email`, `users`.`name`, `users`.`role`, `c`.`name` as `country_name`, `c`.`code` as `country_code`, `users`.`is_active`
+            FROM `users`
+            LEFT JOIN `countries` c ON `users`.`country` = `c`.`id`
+        ');
         $sql->execute();
         return $sql->fetchAll(PDO::FETCH_ASSOC);
     }

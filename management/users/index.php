@@ -105,17 +105,17 @@ $users = $user->getAllUsers();
                 </div>
             </div>
         </div>
-
-            <table class="table align-middle mb-0">
-                <thead class="table-light">
+        <div class="table-responsive">
+            <table class="table table-bordered" id="orders-table">
+                <thead>
                     <tr>
-                        <th class="text-center" style="width: 5%;">Id</th>
-                        <th style="width: 30%;">Email</th>
-                        <th style="width: 20%;">Nom & prénom</th>
-                        <th style="width: 5%;">Pays</th>
-                        <th class="text-center" style="width: 5%;">Status</th>
-                        <th style="width: 15%;">Role</th>
-                        <th class="text-center" style="width: 20%;">Actions</th>
+                        <th scope="col">Id</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Nom & prénom</th>
+                        <th scope="col">Pays</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Role</th>
+                        <th scope="col">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -134,24 +134,24 @@ $users = $user->getAllUsers();
                                 </div>
                             </td>
                             <td><?php echo $user['name']; ?></td>
-                            <td><?php echo $user['country']; ?></td>
+                            <td><?php echo $user['country_name']; ?></td>
                             <td class="text-center"><?php echo $user['is_active'] == 1 ? '<i class="bx bxs-check-circle" style="color: green;"></i>' : '<i class="bx bxs-x-circle" style="color: red;"></i>'; ?></td>
                             <td>
-                                <span style="color: var(--purple); font-weight: bold;"><?php echo $user['role'] == 0 ? 'Secondaire' : 'Admin'; ?></span>
+                                <span style="color: var(--purple); font-weight: bold;"><?php echo $user['role'] == 0 ? 'Assistant' : 'Admin'; ?></span>
                             </td>
                             <td class="text-center">
 
                                 <form action="save.php" method="post" class="d-inline">
                                     <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
                                     <input type="hidden" name="validate" value="suspend">
-                                    <button type="submit" class="btn btn-link p-0" style="color: var(--purple);">
+                                    <button type="submit" class="btn btn-link p-0" style="color: var(--purple); padding: 1rem; border: 1px solid var(--purple);">
                                         <i class='bx bxs-user-x' style="font-size: 1.5rem;" title="Suspend"></i>
                                     </button>
                                 </form>
                                 <form action="save.php" method="post" class="d-inline">
                                     <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
                                     <input type="hidden" name="validate" value="delete">
-                                    <button type="submit" class="btn btn-link p-0" style="color: var(--secondary);">
+                                    <button type="submit" class="btn btn-link p-0" style="color: var(--primary); padding: 1rem; border: 1px solid var(--primary);">
                                         <i class='bx bxs-trash' style="font-size: 1.5rem;" title="Delete"></i>
                                     </button>
                                 </form>
@@ -160,6 +160,8 @@ $users = $user->getAllUsers();
                     <?php endforeach; ?>
                 </tbody>
             </table>
+        </div>
+
     </main>
 
     <?php include '../../includes/footer.php'; ?>
