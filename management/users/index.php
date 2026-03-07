@@ -8,10 +8,13 @@ checkIsActive($_SESSION['user_id']);
 
 use src\Connectbd;
 use src\User;
+use src\Country;
 
 $cnx = Connectbd::getConnection();
 
 $user = new User($cnx);
+$country = new Country($cnx);
+$countries = $country->getAll();
 
 $users = $user->getAllUsers();
 
@@ -37,7 +40,7 @@ $users = $user->getAllUsers();
     <main class="container my-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="mb-0">Liste des utilisateurs</h2>
-            <button class="btn" style="background-color: var(--purple); color: white; border: none;" data-bs-toggle="modal" data-bs-target="#addUserModal">
+            <button class="btn btn-order-primary border-1 border-black rounded-3" data-bs-toggle="modal" data-bs-target="#addUserModal">
                 <i class='bx bx-plus'></i> Ajouter
             </button>
         </div>
@@ -45,9 +48,9 @@ $users = $user->getAllUsers();
         <!-- Modal Ajout Utilisateur -->
         <div class="modal fade" id="addUserModal" tabindex="-1">
             <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content" style="background: var(--magenta); border-radius: 15px;">
-                    <div class="modal-header">
-                        <h5 class="modal-title">
+                <div class="modal-content" style="border: 1.5px solid #0c1a2c; border-radius: 0px;">
+                    <div class="modal-header" style="background: var(--primary); border-radius: 0px;">
+                        <h5 class="modal-title" style="color: var(--paper);">
                             <i class='bx bx-user-plus'></i> Nouvel Utilisateur
                         </h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -59,28 +62,24 @@ $users = $user->getAllUsers();
                                     <i class='bx bx-user'></i> Nom et prénom
                                 </label>
                                 <input type="text" class="form-control" name="name" required
-                                    style="border-color: var(--purple); border-radius: 10px; padding-left: 35px;">
+                                    style="border-color: var(--purple); padding-left: 35px;">
                             </div>
                             <div class="mb-3 position-relative">
                                 <label class="form-label" style="color: var(--purple);">
                                     <i class='bx bx-envelope'></i> Email
                                 </label>
                                 <input type="email" class="form-control" name="email" required
-                                    style="border-color: var(--purple); border-radius: 10px; padding-left: 35px;">
+                                    style="border-color: var(--purple); padding-left: 35px;">
                             </div>
 
                             <div class="mb-3">
                                 <label class="form-label" style="color: var(--purple);">
                                     <i class='bx bx-flag'></i> Pays
                                 </label>
-                                <select class="form-select" name="country" required style="border-color: var(--purple); border-radius: 10px;">
-                                    <option value="GN" selected>🇬🇳 Guinée</option>
-                                    <option value="TD">🇹🇩 Tchad</option>
-
-                                    <!-- Second site -->
-                                    <!-- <option value="TD">🇹🇩 Tchad</option>
-                                    <option value="ML">🇲🇱 Mali</option>
-                                    <option value="GA">🇬🇦 Gabon</option> -->
+                                <select class="form-select" name="country" required style="border-color: var(--purple);">
+                                    <?php foreach ($countries as $country): ?>
+                                        <option value="<?php echo $country['id']; ?>"><?php echo $country['name']; ?></option>
+                                    <?php endforeach; ?>
                                 </select>
                             </div>
 
@@ -88,17 +87,17 @@ $users = $user->getAllUsers();
                                 <label class="form-label" style="color: var(--purple);">
                                     <i class='bx bx-user-check'></i> Rôle
                                 </label>
-                                <select class="form-select" name="role" required style="border-color: var(--purple); border-radius: 10px;">
+                                <select class="form-select" name="role" required style="border-color: var(--purple);">
                                     <option value="0">Manager</option>
                                     <option value="1">Admin</option>
                                 </select>
                             </div>
 
                             <div class="modal-footer border-0">
-                                <button type="button" class="btn" data-bs-dismiss="modal"
+                                <button type="button" class="btn btn-order-primary border-1 border-black rounded-3" data-bs-dismiss="modal"
                                     style="background: var(--paper); color: var(--purple);">Annuler</button>
-                                <input type="submit" class="btn" name="validate" value="Ajouter"
-                                    style="background: var(--purple); color: var(--paper);" />
+                                <input type="submit" class="btn btn-order-primary border-1 border-black rounded-3" name="validate" value="Ajouter"
+                                    style="background: var(--primary); color: var(--paper);" />
                             </div>
                         </form>
                     </div>
