@@ -42,7 +42,7 @@ $products = $product->getAllProducts();
                     Gestion du catalogue, des prix par pays et des managers associés.
                 </p>
             </div>
-            <a href="add.php" class="btn admin-btn-primary">
+            <a href="add.php" class="btn btn-order-primary border-1 border-black rounded-3">
                 <i class='bx bx-plus'></i>
                 <span>Ajouter</span>
             </a>
@@ -52,7 +52,7 @@ $products = $product->getAllProducts();
             <div class="admin-search-wrapper">
                 <i class='bx bx-search'></i>
                 <input type="text" id="productSearch" class="form-control admin-search-input"
-                       placeholder="Rechercher un produit (nom, pays, manager)...">
+                    placeholder="Rechercher un produit (nom, pays, manager)...">
             </div>
             <div class="d-flex gap-2">
                 <span class="badge rounded-pill bg-light text-muted">
@@ -60,14 +60,14 @@ $products = $product->getAllProducts();
                 </span>
             </div>
         </div>
-
-            <table class="table align-middle mb-0" id="productsTable">
-                <thead class="table-light">
+        <div class="table-responsive">
+            <table class="table table-bordered" id="orders-table">
+                <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Produit</th>
-                        <th>Prix par pays / managers</th>
-                        <th class="text-end">Actions</th>
+                        <th scope="col">ID</th>
+                        <th scope="col">Produit</th>
+                        <th scope="col">Prix par pays / managers</th>
+                        <th scope="col" class="text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -75,14 +75,25 @@ $products = $product->getAllProducts();
                     foreach ($products as $prod):
                         $managers = $product->getProductManagers($prod['product_id']);
                         $countries = $product->getProductCountries($prod['product_id']);
+                    ?>
+                        <?php
+                        $searchParts = [strtolower($prod['name'])];
+                        foreach ($countries as $c) {
+                            $searchParts[] = strtolower($c['code']);
+                        }
+                        foreach ($managers as $m) {
+                            $searchParts[] = strtolower($m['name'] ?? '');
+                        }
+                        $dataSearch = implode(' ', array_filter($searchParts));
                         ?>
                         <tr class="product-row"
-                            data-name="<?= htmlspecialchars(strtolower($prod['name'])); ?>">
+                            data-name="<?= htmlspecialchars(strtolower($prod['name'])); ?>"
+                            data-search="<?= htmlspecialchars($dataSearch); ?>">
                             <td>#<?php echo $prod['product_id']; ?></td>
                             <td>
                                 <div class="d-flex align-items-center gap-2 product-main-info">
                                     <img src="../../uploads/main/<?php echo $prod['image']; ?>"
-                                         alt="<?php echo $prod['name']; ?>" class="product-image">
+                                        alt="<?php echo $prod['name']; ?>" class="product-image">
                                     <div class="product-text">
                                         <div class="product-name-cell-admin">
                                             <?php echo htmlspecialchars($prod['name']); ?>
@@ -115,9 +126,9 @@ $products = $product->getAllProducts();
                                                 <span class="small text-muted ms-1">Aucun manager</span>
                                             <?php endif; ?>
                                             <button type="button"
-                                                    class="btn btn-sm btn-link p-0 ms-1 product-copy-link"
-                                                    onclick="copyProductLink(<?php echo $prod['product_id']; ?>, <?php echo (int)$ctry['id']; ?>)"
-                                                    title="Copier le lien pour ce pays">
+                                                class="btn btn-sm btn-link p-0 ms-1 product-copy-link"
+                                                onclick="copyProductLink(<?php echo $prod['product_id']; ?>, <?php echo (int)$ctry['id']; ?>)"
+                                                title="Copier le lien pour ce pays">
                                                 <i class='bx bx-link-alt'></i>
                                             </button>
                                         </div>
@@ -126,30 +137,26 @@ $products = $product->getAllProducts();
                                     <span class="text-muted">Aucun prix défini</span>
                                 <?php endif; ?>
                             </td>
-                            <td class="text-end" style="position:relative;">
-                                <button type="button" class="action-btn context-menu-btn"
-                                        data-id="<?php echo $prod['product_id']; ?>">
-                                    <i class='bx bx-dots-vertical-rounded'></i>
-                                </button>
-                                <div class="context-menu admin-context-menu"
-                                     id="contextMenu<?php echo $prod['product_id']; ?>">
-                                    
-                                    <a href="update.php?id=<?php echo $prod['product_id']; ?>"
-                                       class="menu-item d-flex align-items-center gap-2">
-                                        <i class='bx bx-edit'></i>
-                                        <span>Modifier</span>
-                                    </a>
-                                    <button class="menu-item d-flex align-items-center gap-2 text-danger"
-                                            onclick="deleteProduct(<?php echo $prod['product_id']; ?>)">
-                                        <i class='bx bx-trash'></i>
-                                        <span>Supprimer</span>
+                            <td class="text-center">
+                                <a href="update.php?id=<?php echo $prod['product_id']; ?>"
+                                    class="btn btn-link p-0 me-1" style="color: var(--purple); padding: 1rem; border: 1px solid var(--purple);"
+                                    title="Modifier">
+                                    <i class='bx bx-edit' style="font-size: 1.5rem;"></i>
+                                </a>
+                                <form action="save.php" method="post" class="d-inline form-delete-product"
+                                    onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce produit ? Cette action est irréversible.');">
+                                    <input type="hidden" name="valider" value="delete">
+                                    <input type="hidden" name="product_id" value="<?php echo $prod['product_id']; ?>">
+                                    <button type="submit" class="btn btn-link p-0" style="color: var(--primary); padding: 1rem; border: 1px solid var(--primary);" title="Supprimer">
+                                        <i class='bx bx-trash' style="font-size: 1.5rem;"></i>
                                     </button>
-                                </div>
+                                </form>
                             </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
+        </div>
     </main>
 
     <?php include '../../includes/footer.php'; ?>
@@ -180,14 +187,14 @@ $products = $product->getAllProducts();
 
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(shareUrl)
-                    .then(function () {
+                    .then(function() {
                         if (typeof showNotification === 'function') {
                             showNotification("Lien copié dans le presse-papiers !", "success");
                         } else {
                             alert("Lien copié : " + shareUrl);
                         }
                     })
-                    .catch(function () {
+                    .catch(function() {
                         fallbackCopy(shareUrl);
                     });
             } else {
@@ -196,56 +203,19 @@ $products = $product->getAllProducts();
         }
 
 
-        function deleteProduct(productId) {
-            if (confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = 'save.php';
-
-                const validerInput = document.createElement('input');
-                validerInput.type = 'hidden';
-                validerInput.name = 'valider';
-                validerInput.value = 'delete';
-
-                const productIdInput = document.createElement('input');
-                productIdInput.type = 'hidden';
-                productIdInput.name = 'product_id';
-                productIdInput.value = productId;
-
-                form.appendChild(validerInput);
-                form.appendChild(productIdInput);
-                document.body.appendChild(form);
-                form.submit();
-            }
-        }
-
-        document.querySelectorAll('.context-menu-btn').forEach(function (btn) {
-            btn.addEventListener('click', function (e) {
-                e.stopPropagation();
-                document.querySelectorAll('.admin-context-menu').forEach(function (menu) {
-                    menu.style.display = 'none';
+        (function() {
+            var searchInput = document.getElementById('productSearch');
+            var rows = document.querySelectorAll('.product-row');
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    var term = (this.value || '').toLowerCase().trim();
+                    rows.forEach(function(row) {
+                        var text = (row.getAttribute('data-search') || row.getAttribute('data-name') || '') + ' ' + (row.textContent || '').toLowerCase();
+                        row.style.display = term === '' || text.indexOf(term) !== -1 ? '' : 'none';
+                    });
                 });
-                var menu = document.getElementById('contextMenu' + btn.getAttribute('data-id'));
-                menu.style.display = 'block';
-            });
-        });
-
-        document.addEventListener('click', function () {
-            document.querySelectorAll('.admin-context-menu').forEach(function (menu) {
-                menu.style.display = 'none';
-            });
-        });
-
-        // Filtre simple côté client
-        const searchInput = document.getElementById('productSearch');
-        const rows = document.querySelectorAll('#productsTable tbody .product-row');
-        searchInput.addEventListener('input', function () {
-            const q = this.value.trim().toLowerCase();
-            rows.forEach(function (row) {
-                const name = row.getAttribute('data-name') || '';
-                row.style.display = name.indexOf(q) !== -1 ? '' : 'none';
-            });
-        });
+            }
+        })();
 
     </script>
 </body>
