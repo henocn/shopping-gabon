@@ -106,7 +106,6 @@ $users = $user->getAllUsers();
             </div>
         </div>
 
-        <div class="table-container">
             <table class="table align-middle mb-0">
                 <thead class="table-light">
                     <tr>
@@ -161,7 +160,6 @@ $users = $user->getAllUsers();
                     <?php endforeach; ?>
                 </tbody>
             </table>
-        </div>
     </main>
 
     <?php include '../../includes/footer.php'; ?>
