@@ -361,7 +361,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   <!-- Onglet Livrées aujourd'hui -->
                   <div class="tab-pane fade" id="pane-delivered" role="tabpanel">
                         <div class="row">
-                              <div class="col-12">          
+                              <div class="col-12">
                                     <?php if (empty($groupedOrders['delivered'])): ?>
                                           <p class="text-muted">Aucune commande livrée aujourd'hui.</p>
                                     <?php else: ?>
@@ -572,72 +572,72 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
 
             // Initialise les interactions sur les commandes (modals et boutons rapides)
             function initOrderInteractions() {
-                  document.querySelectorAll('[id^="submitBtn"]').forEach(button => {
-                        button.addEventListener('click', function(e) {
-                              e.preventDefault();
-                              e.stopPropagation();
+            document.querySelectorAll('[id^="submitBtn"]').forEach(button => {
+                  button.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
 
-                              const orderId = this.id.replace('submitBtn', '');
-                              const form = document.getElementById('orderForm' + orderId);
-                              const selectedAction = document.getElementById('actionSelect' + orderId).value;
+                        const orderId = this.id.replace('submitBtn', '');
+                        const form = document.getElementById('orderForm' + orderId);
+                        const selectedAction = document.getElementById('actionSelect' + orderId).value;
 
-                              if (selectedAction === 'deliver') {
-                                    currentDeliveryContext = {
-                                          type: 'modal',
-                                          orderId: orderId
-                                    };
-
-                                    const mainModalElement = document.getElementById('orderModal' + orderId);
-                                    const mainModal = bootstrap.Modal.getInstance(mainModalElement);
-                                    if (mainModal) {
-                                          mainModal.hide();
-                                    }
-
-                                    setTimeout(() => {
-                                          const deliveryModalElement = document.getElementById('deliveryFeeModal' + orderId);
-                                          if (deliveryModalElement) {
-                                                const feeInput = document.getElementById('deliveryFeeInput' + orderId);
-                                                if (feeInput) {
-                                                      feeInput.value = '0';
-                                                      feeInput.focus();
-                                                }
-                                                const existingModal = bootstrap.Modal.getInstance(deliveryModalElement);
-                                                const deliveryModal = existingModal || new bootstrap.Modal(deliveryModalElement);
-                                                deliveryModal.show();
-                                                attachDeliveryModalHandler(orderId, deliveryModalElement);
-                                          }
-                                    }, 250);
-                              } else {
-                                    form.submit();
-                              }
-                        });
-                  });
-
-                  document.querySelectorAll('.quick-deliver-btn').forEach(button => {
-                        button.addEventListener('click', function(e) {
-                              e.preventDefault();
-                              e.stopPropagation();
-
-                              const orderId = this.dataset.orderId;
+                        if (selectedAction === 'deliver') {
                               currentDeliveryContext = {
-                                    type: 'quick',
+                                    type: 'modal',
                                     orderId: orderId
                               };
 
-                              const deliveryModalElement = document.getElementById('deliveryFeeModal' + orderId);
-                              if (deliveryModalElement) {
-                                    const feeInput = document.getElementById('deliveryFeeInput' + orderId);
-                                    if (feeInput) {
-                                          feeInput.value = '0';
-                                          feeInput.focus();
-                                    }
-                                    const existingModal = bootstrap.Modal.getInstance(deliveryModalElement);
-                                    const deliveryModal = existingModal || new bootstrap.Modal(deliveryModalElement);
-                                    deliveryModal.show();
-                                    attachDeliveryModalHandler(orderId, deliveryModalElement);
+                              const mainModalElement = document.getElementById('orderModal' + orderId);
+                              const mainModal = bootstrap.Modal.getInstance(mainModalElement);
+                              if (mainModal) {
+                                    mainModal.hide();
                               }
-                        });
+
+                              setTimeout(() => {
+                                    const deliveryModalElement = document.getElementById('deliveryFeeModal' + orderId);
+                                    if (deliveryModalElement) {
+                                          const feeInput = document.getElementById('deliveryFeeInput' + orderId);
+                                          if (feeInput) {
+                                                feeInput.value = '0';
+                                                feeInput.focus();
+                                          }
+                                          const existingModal = bootstrap.Modal.getInstance(deliveryModalElement);
+                                          const deliveryModal = existingModal || new bootstrap.Modal(deliveryModalElement);
+                                          deliveryModal.show();
+                                          attachDeliveryModalHandler(orderId, deliveryModalElement);
+                                    }
+                              }, 250);
+                        } else {
+                              form.submit();
+                        }
                   });
+            });
+
+            document.querySelectorAll('.quick-deliver-btn').forEach(button => {
+                  button.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        const orderId = this.dataset.orderId;
+                        currentDeliveryContext = {
+                              type: 'quick',
+                              orderId: orderId
+                        };
+
+                        const deliveryModalElement = document.getElementById('deliveryFeeModal' + orderId);
+                        if (deliveryModalElement) {
+                              const feeInput = document.getElementById('deliveryFeeInput' + orderId);
+                              if (feeInput) {
+                                    feeInput.value = '0';
+                                    feeInput.focus();
+                              }
+                              const existingModal = bootstrap.Modal.getInstance(deliveryModalElement);
+                              const deliveryModal = existingModal || new bootstrap.Modal(deliveryModalElement);
+                              deliveryModal.show();
+                              attachDeliveryModalHandler(orderId, deliveryModalElement);
+                        }
+                  });
+            });
             }
 
             // Confirme la livraison avec les frais saisis
