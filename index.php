@@ -95,56 +95,44 @@ $displayDescription = $product['description'];
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="./assets/css/index.css">
+    <link rel="stylesheet" href="./assets/css/product-store.css">
 </head>
 
-<body class="page-storefront">
+<body class="page-storefront product-page">
 
-    <header class="yc-header">
-        <nav class="yc-navbar container">
-            <div class="logo">
-                <a href="/" aria-label="home">
-                    <img src="assets/images/logo.jpg" alt="TUBKAL MARKET">
-                </a>
-            </div>
-            <div class="corner">
-                <button class="commander-btn" onclick="location.href='#product_details'">Commander</button>
-            </div>
-        </nav>
+    <header class="store-header">
+        <div class="container">
+            <a href="/" class="logo" aria-label="Accueil">
+                <img src="assets/images/logo.jpg" alt="TUBKAL MARKET">
+            </a>
+            <button type="button" class="btn-order-nav commander-btn" onclick="location.href='#product_details'">
+                <i class='bx bx-cart-alt'></i>
+                Commander
+            </button>
+        </div>
     </header>
 
-    <main class="main-content">
-        <section class="container product-layout" aria-label="Détails du produit">
-            <!-- Images -->
-            <div class="product-images">
-                <div class="main-image-wrapper">
-                    <img id="main-image" src="uploads/main/<?= htmlspecialchars($product['image']); ?>">
-                </div>
-                <div class="carousel-grid">
-                    <?php for ($i = 1; $i <= 5; $i++): ?>
-                        <?php if (!empty($product['carousel' . $i])): ?>
-                            <div class="carousel-item">
-                                <img src="uploads/carousel/<?= htmlspecialchars($product['carousel' . $i]); ?>"
-                                    onclick="document.getElementById('main-image').src=this.src">
-                            </div>
-                        <?php endif; ?>
-                    <?php endfor; ?>
-                </div>
-            </div>
-
-            <!-- Details + Form -->
-            <div class="product-details" id="product_details">
-                <h1 class="product-name"><?= htmlspecialchars($displayTitle); ?></h1>
-                <div class="product-price-block">
-                    <span class="product-price-label">Prix pour votre pays</span>
-                    <p class="product-price">
-                        <span id="display-price" data-price="<?= (int)$displayPrice ?>"><?= number_format($displayPrice, 0, ',', ' '); ?></span> <span class="product-currency">FCFA</span>
-                    </p>
-                </div>
-                <form class="express-checkout-form" method="POST" action="management/orders/save.php">
-                    <div class="express-checkout-fields">
-                        <input type="text" name="client_name" class="form-control-custom"
-                            placeholder="Nom complet" required>
+    <main class="store-main">
+        <div class="store-grid">
+            <div class="store-info" id="product_details">
+                <div class="store-card">
+                    <div class="store-card-body">
+                        <h1 class="store-title"><?= htmlspecialchars($displayTitle); ?></h1>
+                        <div class="store-price-wrap">
+                            <span class="store-price-label">Prix pour votre pays</span>
+                            <p class="store-price">
+                                <span id="display-price" data-price="<?= (int)$displayPrice ?>"><?= number_format($displayPrice, 0, ',', ' '); ?></span>
+                                <span class="store-currency">FCFA</span>
+                            </p>
+                        </div>
+                        <p class="store-form-title">Vos coordonnées</p>
+                        <form class="express-checkout-form store-form" method="POST" action="management/orders/save.php">
+                            <div class="store-field">
+                                <label for="client_name">Nom complet</label>
+                                <input type="text" id="client_name" name="client_name" class="store-input" placeholder="Jean Dupont" required>
                         <div class="phone-input-wrapper">
                             <select name="client_country" id="client_country_select" class="form-control-country" required aria-label="Pays (indicatif)">
                                 <?php foreach ($productCountries as $ctry): ?>
@@ -176,14 +164,47 @@ $displayDescription = $product['description'];
                         </button>
                     </div>
                 </form>
+                    </div>
+                </div>
             </div>
 
-            <!-- Description -->
-            <div class="product-description">
-                <?= $displayDescription; ?>
+            <div class="store-gallery">
+                <div class="swiper productSwiperMain">
+                    <div class="swiper-wrapper">
+                        <div class="swiper-slide">
+                            <img src="uploads/main/<?= htmlspecialchars($product['image']); ?>" alt="<?= htmlspecialchars($displayTitle); ?>">
+                        </div>
+                        <?php for ($i = 1; $i <= 5; $i++): ?>
+                            <?php if (!empty($product['carousel' . $i])): ?>
+                                <div class="swiper-slide">
+                                    <img src="uploads/carousel/<?= htmlspecialchars($product['carousel' . $i]); ?>" alt="">
+                                </div>
+                            <?php endif; ?>
+                        <?php endfor; ?>
+                    </div>
+                </div>
+                <div class="swiper productSwiperThumbs">
+                    <div class="swiper-wrapper">
+                        <div class="swiper-slide">
+                            <img src="uploads/main/<?= htmlspecialchars($product['image']); ?>" alt="">
+                        </div>
+                        <?php for ($i = 1; $i <= 5; $i++): ?>
+                            <?php if (!empty($product['carousel' . $i])): ?>
+                                <div class="swiper-slide">
+                                    <img src="uploads/carousel/<?= htmlspecialchars($product['carousel' . $i]); ?>" alt="">
+                                </div>
+                            <?php endif; ?>
+                        <?php endfor; ?>
+                    </div>
+                </div>
             </div>
+        </div>
 
-            <div class="toast-container">
+        <div class="store-description">
+            <?= $displayDescription; ?>
+        </div>
+
+        <div class="toast-container store-toast-container">
                 <div id="liveToast" class="toast align-items-center text-white border-0" role="alert"
                     aria-live="assertive" aria-atomic="true" data-bs-delay="5000">
                     <div class="d-flex">
@@ -195,39 +216,40 @@ $displayDescription = $product['description'];
                     </div>
                 </div>
             </div>
-
-        </section>
-
     </main>
 
-    <footer>
-        <div class="columns container">
-            <div class="column logo">
-                <img src="assets/images/logo.jpg" alt="luxemarket MARKET" width="110" height="70">
-            </div>
-            <div class="column">
-                <h1>À propos</h1>
-                <a href="#">À propos de nous</a>
-                <a href="#">Modes de paiement</a>
-                <a href="#">Livraison</a>
-            </div>
-            <div class="column">
-                <h1>À propos</h1>
-                <h5>Nous sommes une boutique en ligne</h5>
-                <h5>Nous proposons des services d'achat</h5>
-                <h5>Politique de confidentialité</h5>
-            </div>
-        </div>
-        <div class="copyright-wrapper">
-            <p><strong>Tous les droits réservés © luxemarket Market 2025</strong></p>
+    <footer class="store-footer">
+        <div class="container">
+            <img src="assets/images/logo.jpg" alt="TUBKAL MARKET">
+            <p><strong>Tous les droits réservés © 2025</strong></p>
         </div>
     </footer>
 
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
     <script src="assets/js/tracking-manager.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="assets/js/bootstrap.bundle.min.js"></script>
     <script src="assets/js/index.js"></script>
-
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var thumbs = document.querySelector('.productSwiperThumbs');
+            var main = document.querySelector('.productSwiperMain');
+            if (thumbs && main) {
+                var thumbsSwiper = new Swiper('.productSwiperThumbs', {
+                    spaceBetween: 8,
+                    slidesPerView: 4,
+                    freeMode: true,
+                    watchSlidesProgress: true,
+                    breakpoints: { 480: { slidesPerView: 5 } }
+                });
+                new Swiper('.productSwiperMain', {
+                    spaceBetween: 0,
+                    thumbs: { swiper: thumbsSwiper },
+                    loop: false
+                });
+            }
+        });
+    </script>
     <script>
         (function() {
             function safeParseInt(value) {
