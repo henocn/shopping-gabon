@@ -147,11 +147,11 @@ $users = $user->getAllUsers();
                                         <i class='bx bxs-user-x' style="font-size: 1.5rem;" title="Suspend"></i>
                                     </button>
                                 </form>
-                                <form action="save.php" method="post" class="d-inline">
+                                <form action="save.php" method="post" class="d-inline form-delete-user" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.');">
                                     <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
                                     <input type="hidden" name="validate" value="delete">
                                     <button type="submit" class="btn btn-link p-0" style="color: var(--primary); padding: 1rem; border: 1px solid var(--primary);">
-                                        <i class='bx bxs-trash' style="font-size: 1.5rem;" title="Delete"></i>
+                                        <i class='bx bxs-trash' style="font-size: 1.5rem;" title="Supprimer"></i>
                                     </button>
                                 </form>
                             </td>
