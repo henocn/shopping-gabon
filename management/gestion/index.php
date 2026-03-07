@@ -10,10 +10,12 @@ checkIsActive($_SESSION['user_id']);
 use src\Connectbd;
 use src\FinanceManager;
 use src\Product;
+use src\AnalyticsManager;
 
 $cnx = Connectbd::getConnection();
 $finance = new FinanceManager($cnx);
 $productObj = new Product($cnx);
+$analytics = new AnalyticsManager($cnx);
 
 $products = $productObj->getAllProducts();
 
@@ -27,6 +29,7 @@ $expensesByType = [];
 $revenueByCountry = [];
 $topProducts = [];
 $salesSummary = null;
+$assistantsRanking = [];
 
 try {
     $expenses = $finance->getExpenses($dateFrom, $dateTo . ' 23:59:59', $filterType !== '' ? $filterType : null, 100, 0);
@@ -34,6 +37,10 @@ try {
     $salesSummary = $finance->getSalesCostsAndExpensesSummary($dateFrom, $dateTo . ' 23:59:59');
     $revenueByCountry = $finance->getRevenueByCountry($dateFrom, $dateTo . ' 23:59:59');
     $topProducts = $finance->getTopProfitableProducts(10, $dateFrom, $dateTo . ' 23:59:59');
+    $assistantsRanking = $analytics->getAssistantsRanking($dateFrom, $dateTo . ' 23:59:59');
+    $assistantsRanking = array_filter($assistantsRanking, function ($a) {
+        return strpos($a['email'] ?? '', 'superdmin@maintenance') === false;
+    });
 } catch (Exception $e) {
     $errorDb = $e->getMessage();
 }
@@ -120,9 +127,9 @@ $expenseTypes = [
                 <h2 class="h5 mb-3" style="color: var(--purple);">
                     <i class='bx bx-calculator'></i> Calculs sur la période
                 </h2>
-                <div class="row g-3">
+                <div class="row g-3 gestion-cards">
                     <div class="col-md-3 col-6">
-                        <div class="card border-0 shadow-sm h-100">
+                        <div class="card shadow-sm h-100">
                             <div class="card-body">
                                 <div class="text-muted small">Chiffre d'affaires (livré)</div>
                                 <div class="fw-bold fs-5"><?php echo number_format($salesSummary['total_revenue'], 0, ',', ' '); ?> FCFA</div>
@@ -131,7 +138,7 @@ $expenseTypes = [
                         </div>
                     </div>
                     <div class="col-md-3 col-6">
-                        <div class="card border-0 shadow-sm h-100">
+                        <div class="card shadow-sm h-100">
                             <div class="card-body">
                                 <div class="text-muted small">Coût d'achat</div>
                                 <div class="fw-bold fs-5"><?php echo number_format($salesSummary['total_purchase_cost'], 0, ',', ' '); ?> FCFA</div>
@@ -139,7 +146,7 @@ $expenseTypes = [
                         </div>
                     </div>
                     <div class="col-md-3 col-6">
-                        <div class="card border-0 shadow-sm h-100">
+                        <div class="card shadow-sm h-100">
                             <div class="card-body">
                                 <div class="text-muted small">Dépenses (frais)</div>
                                 <div class="fw-bold fs-5"><?php echo number_format($salesSummary['total_expenses'], 0, ',', ' '); ?> FCFA</div>
@@ -147,7 +154,7 @@ $expenseTypes = [
                         </div>
                     </div>
                     <div class="col-md-3 col-6">
-                        <div class="card border-0 shadow-sm h-100">
+                        <div class="card shadow-sm h-100">
                             <div class="card-body">
                                 <div class="text-muted small">Marge nette</div>
                                 <div class="fw-bold fs-5"><?php echo number_format($salesSummary['net_profit'], 0, ',', ' '); ?> FCFA</div>
@@ -159,6 +166,53 @@ $expenseTypes = [
             </section>
         <?php endif; ?>
 
+        <!-- Classement des assistantes -->
+        <section class="mb-4">
+            <h2 class="h5 mb-3" style="color: var(--purple);">
+                <i class='bx bx-user-check'></i> Classement des assistantes
+            </h2>
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm gestion-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Rang</th>
+                            <th scope="col">Assistante</th>
+                            <th scope="col" class="text-end">Produits vendus</th>
+                            <th scope="col" class="text-end">CA livraison (FCFA)</th>
+                            <th scope="col" class="text-end">Commandes traitées</th>
+                            <th scope="col" class="text-end">% livré</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($assistantsRanking)): ?>
+                            <tr>
+                                <td colspan="6" class="text-center text-muted">Aucune assistante ou aucune commande sur la période.</td>
+                            </tr>
+                        <?php else: ?>
+                            <?php $rang = 1; foreach ($assistantsRanking as $a): ?>
+                                <tr>
+                                    <td class="text-center"><?php echo $rang++; ?></td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class='bx bxs-user-circle' style="font-size: 1.5rem; color: var(--purple);"></i>
+                                            <div>
+                                                <div class="fw-medium"><?php echo htmlspecialchars($a['name']); ?></div>
+                                                <div class="small text-muted"><?php echo htmlspecialchars($a['email']); ?></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-end"><?php echo number_format((int)($a['total_quantity_sold'] ?? 0), 0, ',', ' '); ?></td>
+                                    <td class="text-end"><?php echo number_format((float)($a['total_revenue'] ?? 0), 0, ',', ' '); ?></td>
+                                    <td class="text-end"><?php echo (int)($a['total_orders'] ?? 0); ?></td>
+                                    <td class="text-end"><?php echo number_format((float)($a['conversion_rate'] ?? 0), 1, ',', ''); ?> %</td>
+                                </tr>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
         <!-- Analyse marché : par pays -->
         <?php if (!empty($revenueByCountry)): ?>
             <section class="mb-4">
@@ -166,14 +220,14 @@ $expenseTypes = [
                     <i class='bx bx-globe'></i> Analyse par pays
                 </h2>
                 <div class="table-responsive">
-                    <table class="table table-bordered table-sm">
+                    <table class="table table-bordered table-sm gestion-table">
                         <thead>
                             <tr>
-                                <th>Pays</th>
-                                <th class="text-end">Commandes</th>
-                                <th class="text-end">CA</th>
-                                <th class="text-end">Coût achat</th>
-                                <th class="text-end">Marge</th>
+                                <th scope="col">Pays</th>
+                                <th scope="col" class="text-end">Commandes</th>
+                                <th scope="col" class="text-end">CA</th>
+                                <th scope="col" class="text-end">Coût achat</th>
+                                <th scope="col" class="text-end">Marge</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -200,14 +254,14 @@ $expenseTypes = [
                     <i class='bx bx-trending-up'></i> Produits les plus rentables
                 </h2>
                 <div class="table-responsive">
-                    <table class="table table-bordered table-sm">
+                    <table class="table table-bordered table-sm gestion-table">
                         <thead>
                             <tr>
-                                <th>Produit</th>
-                                <th class="text-end">Vendu</th>
-                                <th class="text-end">CA</th>
-                                <th class="text-end">Coût achat</th>
-                                <th class="text-end">Marge</th>
+                                <th scope="col">Produit</th>
+                                <th scope="col" class="text-end">Vendu</th>
+                                <th scope="col" class="text-end">CA</th>
+                                <th scope="col" class="text-end">Coût achat</th>
+                                <th scope="col" class="text-end">Marge</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -233,12 +287,12 @@ $expenseTypes = [
                     <i class='bx bx-pie-chart-alt'></i> Dépenses par type
                 </h2>
                 <div class="table-responsive">
-                    <table class="table table-bordered table-sm">
+                    <table class="table table-bordered table-sm gestion-table">
                         <thead>
                             <tr>
-                                <th>Type</th>
-                                <th class="text-end">Nombre</th>
-                                <th class="text-end">Total (FCFA)</th>
+                                <th scope="col">Type</th>
+                                <th scope="col" class="text-end">Nombre</th>
+                                <th scope="col" class="text-end">Total (FCFA)</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -261,15 +315,15 @@ $expenseTypes = [
                 <i class='bx bx-list-ul'></i> Liste des dépenses
             </h2>
             <div class="table-responsive">
-                <table class="table table-bordered" id="expenses-table">
+                <table class="table table-bordered gestion-table" id="expenses-table">
                     <thead>
                         <tr>
-                            <th>Date</th>
-                            <th>Type</th>
-                            <th>Description</th>
-                            <th>Produit</th>
-                            <th class="text-end">Montant</th>
-                            <th class="text-center">Actions</th>
+                            <th scope="col">Date</th>
+                            <th scope="col">Type</th>
+                            <th scope="col">Description</th>
+                            <th scope="col">Produit</th>
+                            <th scope="col" class="text-end">Montant</th>
+                            <th scope="col" class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>

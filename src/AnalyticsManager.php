@@ -222,7 +222,8 @@ class AnalyticsManager
                     COUNT(CASE WHEN o.newstat = 'deliver' THEN 1 END) as delivered_orders,
                     COUNT(CASE WHEN o.newstat = 'canceled' THEN 1 END) as cancelled_orders,
                     COALESCE(SUM(CASE WHEN o.newstat = 'deliver' THEN o.total_price ELSE 0 END), 0) as total_revenue,
-                    ROUND(COUNT(CASE WHEN newstat = 'deliver' THEN 1 END) * 100.0 / NULLIF(COUNT(o.id), 0), 2) as conversion_rate
+                    COALESCE(SUM(CASE WHEN o.newstat = 'deliver' THEN o.quantity ELSE 0 END), 0) as total_quantity_sold,
+                    ROUND(COUNT(CASE WHEN o.newstat = 'deliver' THEN 1 END) * 100.0 / NULLIF(COUNT(o.id), 0), 2) as conversion_rate
                 FROM users u
                 LEFT JOIN orders o ON u.id = o.manager_id";
 
@@ -236,7 +237,7 @@ class AnalyticsManager
             $sql .= "
                 WHERE u.role = 0 AND u.is_active = 1
                 GROUP BY u.id, u.name, u.email
-                ORDER BY total_revenue DESC
+                ORDER BY total_quantity_sold DESC, total_revenue DESC
             ";
 
             $stmt = $this->pdo->prepare($sql);
