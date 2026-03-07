@@ -82,7 +82,7 @@ $expenseTypes = [
             </div>
             <button type="button" class="btn btn-order-primary border-1 border-black rounded-3" data-bs-toggle="modal" data-bs-target="#addExpenseModal">
                 <i class='bx bx-plus'></i>
-                <span>Ajouter une dépense</span>
+                <span>Dépense</span>
             </button>
         </div>
 
