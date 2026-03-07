@@ -62,9 +62,6 @@ $productCountries = $manager->getProductCountries($productId);
 
 
         <form id="productForm" enctype="multipart/form-data" class="form-container" method="POST" action="save.php">
-            <!-- Champs cachés pour les images -->
-            <input type="file" id="mainImageInput" name="mainImage" style="display: none;" accept="image/*">
-            <input type="file" id="carouselImagesInput" name="carouselImages[]" style="display: none;" accept="image/*" multiple>
 
             <div class="floating-actions">
                 <button type="button" class="floating-btn" onclick="toggleSection('carousel')" title="Modifier les images">
@@ -151,27 +148,18 @@ $productCountries = $manager->getProductCountries($productId);
                         <label class="form-label">
                             <i class='bx bx-image'></i> Image principale
                         </label>
-
-                        <!-- Affichage de l'image existante -->
                         <?php if (!empty($product['image'])): ?>
                             <div class="existing-media mb-3">
-                                <img src="../../uploads/main/<?= $product['image'] ?>" alt="Image principale">
-                                <span><?= $product['image'] ?></span>
-                                <div class="form-check delete-checkbox">
+                                <img src="../../uploads/main/<?= $product['image'] ?>" alt="Image principale" class="img-thumbnail mb-2">
+                                <span class="d-block small text-muted"><?= htmlspecialchars($product['image']) ?></span>
+                                <div class="form-check">
                                     <input class="form-check-input" type="checkbox" name="delete_main_image" id="deleteMainImage">
-                                    <label class="form-check-label" for="deleteMainImage">
-                                        Supprimer cette image
-                                    </label>
+                                    <label class="form-check-label" for="deleteMainImage">Supprimer cette image</label>
                                 </div>
-                                <input type="hidden" name="existing_main_image" value="<?= $product['image'] ?>">
+                                <input type="hidden" name="existing_main_image" value="<?= htmlspecialchars($product['image']) ?>">
                             </div>
                         <?php endif; ?>
-
-                        <div class="custom-file-input" id="mainImageUpload">
-                            <i class='bx bx-upload'></i>
-                            <p>Cliquez ou déposez une nouvelle image ici</p>
-                        </div>
-                        <div id="mainImagePreview"></div>
+                        <input type="file" class="form-control" name="mainImage" accept="image/*">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">
@@ -225,11 +213,7 @@ $productCountries = $manager->getProductCountries($productId);
                         <label class="form-label">
                             <i class='bx bx-images'></i> Nouvelles images du carousel (5 images maximum)
                         </label>
-                        <div class="custom-file-input" id="carouselImageUpload">
-                            <i class='bx bx-upload'></i>
-                            <p>Cliquez ou déposez les images ici</p>
-                        </div>
-                        <div class="carousel-preview" id="carouselPreview"></div>
+                        <input type="file" class="form-control" name="carouselImages[]" accept="image/*" multiple>
                     </div>
                 </div>
             </div>

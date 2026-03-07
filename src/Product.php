@@ -193,9 +193,16 @@ class Product
         ]);
     }
     
+    /**
+     * Retourne les managers du produit avec leur pays (code). Le pays du manager vient de users.country (code) relié à countries.
+     */
     public function getProductManagers($productId)
     {
-        $req = $this->bd->prepare("SELECT u.id, u.name, u.email, c.code as country_code, c.name as country, pc.selling_price FROM users u INNER JOIN product_managers pm ON u.id = pm.manager_id LEFT JOIN countries c ON u.country = c.id LEFT JOIN product_countries pc ON pc.product_id = pm.product_id AND pc.country_id = u.country WHERE pm.product_id = :product_id");
+        $req = $this->bd->prepare("SELECT u.id, u.name, u.email, c.code AS country_code, c.name AS country_name
+            FROM users u
+            INNER JOIN product_managers pm ON u.id = pm.manager_id
+            LEFT JOIN countries c ON u.country = c.code
+            WHERE pm.product_id = :product_id");
         $req->execute(['product_id' => $productId]);
         return $req->fetchAll(PDO::FETCH_ASSOC);
     }

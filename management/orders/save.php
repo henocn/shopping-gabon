@@ -8,6 +8,7 @@ use src\Product;
 use src\Order;
 use src\Pack;
 use src\Depense;
+use src\Country;
 
 $cnx = Connectbd::getConnection();
 
@@ -40,12 +41,20 @@ if (isset($_POST['valider'])) {
                 //$pack = $packManager->getPackById($packId);
                 $product = $productManager->getProducts($productId);
 
-                // Récupérer le prix de vente depuis la table product_countries pour le pays choisi
+                // Le formulaire envoie l’id du pays (client_country = id). On garde cet id pour la commande.
+                $clientCountryId = (int) ($_POST['client_country'] ?? 0);
+                $countryManager = new Country($cnx);
+                $clientCountryCode = $countryManager->getCodeById($clientCountryId);
+                if (!$clientCountryId || !$clientCountryCode) {
+                    $_SESSION['order_message'] = "Pays invalide. Veuillez réessayer.";
+                    header("Location: ../../index.php?id=" . $productId);
+                    exit;
+                }
+
                 $productCountries = $productManager->getProductCountries($productId);
                 $sellingPrice = 0;
-                $clientCountry = htmlspecialchars($_POST['client_country']);
                 foreach ($productCountries as $countryPrice) {
-                    if ($countryPrice['id'] == $clientCountry) {
+                    if ((int) $countryPrice['id'] === $clientCountryId) {
                         $sellingPrice = $countryPrice['selling_price'];
                         break;
                     }
@@ -56,12 +65,12 @@ if (isset($_POST['valider'])) {
                     exit;
                 }
 
-                // Récupérer le manager associé au produit dans le pays du client
+                // Manager du produit pour ce pays uniquement (assistant dont le pays = pays du client)
                 $productManagers = $productManager->getProductManagers($productId);
-                $managerId = null;
+                $managerId = 0;
                 foreach ($productManagers as $manager) {
-                    if ($manager['country'] == $clientCountry) {
-                        $managerId = $manager['id'];
+                    if (isset($manager['country_code']) && (string) $manager['country_code'] === $clientCountryCode) {
+                        $managerId = (int) $manager['id'];
                         break;
                     }
                 }
@@ -70,7 +79,7 @@ if (isset($_POST['valider'])) {
                     'product_id'    => $productId,
                     'pack_id'       => $packId,
                     'client_name'   => $_POST['client_name'],
-                    'client_country' => htmlspecialchars($_POST['client_country']),
+                    'client_country' => $clientCountryId,
                     'client_adress' => htmlspecialchars($_POST['client_adress']),
                     'client_phone'  => htmlspecialchars($_POST['client_phone']),
                     'client_note'   => htmlspecialchars($_POST['client_note']),

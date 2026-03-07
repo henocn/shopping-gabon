@@ -50,9 +50,6 @@ $countries = $countryStmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
 
         <form id="productForm" enctype="multipart/form-data" class="form-container" method="POST" action="save.php">
-            <!-- Champs cachés pour les images -->
-            <input type="file" id="mainImageInput" name="mainImage" style="display: none;" accept="image/*">
-            <input type="file" id="carouselImagesInput" name="carouselImages[]" style="display: none;" accept="image/*" multiple>
 
             <div class="floating-actions">
                 <button type="button" class="floating-btn" onclick="toggleSection('carousel')" title="Ajouter des images">
@@ -134,11 +131,7 @@ $countries = $countryStmt->fetchAll(PDO::FETCH_ASSOC);
                         <label class="form-label">
                             <i class='bx bx-image'></i> Image principale
                         </label>
-                        <div class="custom-file-input" id="mainImageUpload">
-                            <i class='bx bx-upload'></i>
-                            <p>Cliquez ou déposez l'image ici</p>
-                        </div>
-                        <div id="mainImagePreview"></div>
+                        <input type="file" class="form-control" name="mainImage" accept="image/*">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">
@@ -160,11 +153,7 @@ $countries = $countryStmt->fetchAll(PDO::FETCH_ASSOC);
                         <label class="form-label">
                             <i class='bx bx-images'></i> Images du carousel (5 images maximum)
                         </label>
-                        <div class="custom-file-input" id="carouselImageUpload">
-                            <i class='bx bx-upload'></i>
-                            <p>Cliquez ou déposez les images ici</p>
-                        </div>
-                        <div class="carousel-preview" id="carouselPreview"></div>
+                        <input type="file" class="form-control" name="carouselImages[]" accept="image/*" multiple>
                     </div>
                 </div>
             </div>
