@@ -123,6 +123,8 @@ body.product-page {
 
 .product-page .store-gallery .swiper {
   border-radius: var(--store-radius);
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .product-page .store-gallery .swiper-slide {
@@ -496,4 +498,210 @@ body.product-page {
   margin-bottom: 0.75rem;
   opacity: 0.75;
   filter: none;
+}
+
+/* ================= Responsive mobile – évite débordement et améliore lisibilité ================= */
+.product-page {
+  overflow-x: hidden;
+}
+
+.product-page .store-header .container {
+  padding-left: 1rem;
+  padding-right: 1rem;
+  flex-wrap: nowrap;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.product-page .store-header .logo {
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.product-page .store-header .logo img {
+  max-height: 38px;
+  width: auto;
+  max-width: 140px;
+  object-fit: contain;
+}
+
+.product-page .store-header .btn-order-nav {
+  flex-shrink: 0;
+  padding: 0.55rem 1rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.product-page .store-main {
+  padding-left: 1rem;
+  padding-right: 1rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.product-page .store-grid {
+  min-width: 0;
+  width: 100%;
+}
+
+.product-page .store-gallery {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.product-page .store-gallery .swiper,
+.product-page .store-gallery .swiper-slide img {
+  max-width: 100%;
+}
+
+.product-page .store-info {
+  min-width: 0;
+}
+
+.product-page .store-card {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.product-page .store-card-body {
+  padding: 1.25rem;
+}
+
+.product-page .store-title {
+  font-size: 1.35rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.product-page .store-price-wrap {
+  padding: 0.9rem 1rem;
+}
+
+.product-page .store-price {
+  font-size: 1.5rem;
+  word-break: break-word;
+}
+
+.product-page .store-card .phone-input-wrapper {
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.product-page .store-card .form-control-country {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+.product-page .store-description {
+  padding: 1.25rem;
+  margin-top: 1.25rem;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.product-page .store-footer {
+  padding: 1.5rem 1rem 1rem;
+}
+
+.product-page .store-footer .container {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+@media (max-width: 600px) {
+  .product-page .store-header .container {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .product-page .store-main {
+    padding: 1.5rem 0.75rem 2rem;
+  }
+
+  .product-page .store-grid {
+    gap: 1.5rem;
+  }
+
+  .product-page .store-card-body {
+    padding: 1rem;
+  }
+
+  .product-page .store-title {
+    font-size: 1.2rem;
+  }
+
+  .product-page .store-price {
+    font-size: 1.35rem;
+  }
+
+  .product-page .store-currency {
+    font-size: 0.85rem;
+  }
+
+  .product-page .store-card .phone-input-wrapper {
+    grid-template-columns: 1fr;
+  }
+
+  .product-page .store-card .form-control-country {
+    width: 100%;
+  }
+
+  .product-page .store-description {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .product-page .store-header .logo img {
+    max-height: 32px;
+    max-width: 120px;
+  }
+
+  .product-page .store-header .btn-order-nav {
+    padding: 0.5rem 0.85rem;
+    font-size: 0.8rem;
+  }
+
+  .product-page .store-main {
+    padding: 1.25rem 0.5rem 1.75rem;
+  }
+
+  .product-page .store-card-body {
+    padding: 0.85rem;
+  }
+
+  .product-page .store-title {
+    font-size: 1.1rem;
+  }
+
+  .product-page .store-price-wrap {
+    padding: 0.75rem 0.85rem;
+  }
+
+  .product-page .store-price {
+    font-size: 1.2rem;
+  }
+
+  .product-page .store-form-title {
+    font-size: 0.85rem;
+  }
+
+  .product-page .store-card .btn-submit-order,
+  .product-page .store-card .modal-footer-custom .btn-submit-order {
+    padding: 0.85rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .product-page .store-description {
+    padding: 0.85rem;
+  }
+
+  .product-page .store-toast-container {
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: 0.75rem;
+  }
 }

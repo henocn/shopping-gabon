@@ -377,6 +377,8 @@ body.page-storefront {
 .phone-input-wrapper {
   display: flex;
   gap: 0.5rem;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .form-control-country {
@@ -389,6 +391,16 @@ body.page-storefront {
   background: var(--yc-surface);
   cursor: pointer;
   transition: border-color 0.2s ease;
+}
+
+@media (max-width: 600px) {
+  .phone-input-wrapper {
+    flex-direction: column;
+  }
+  .form-control-country {
+    min-width: 0;
+    width: 100%;
+  }
 }
 
 .form-control-country:focus {
@@ -508,7 +520,18 @@ footer .copyright-wrapper {
   position: fixed;
   bottom: 1rem;
   right: 1rem;
+  left: auto;
   z-index: 1055;
+  max-width: calc(100vw - 2rem);
+}
+
+@media (max-width: 480px) {
+  .toast-container {
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: 0.75rem;
+    max-width: none;
+  }
 }
 
 .toast {
