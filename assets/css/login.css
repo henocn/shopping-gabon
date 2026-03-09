@@ -29,11 +29,18 @@ body.auth-page {
   box-sizing: border-box;
   background-image: radial-gradient(
     ellipse 140% 120% at 50% -20%,
-    #bae6fd 0%,
+    /* #bae6fd 0%,
     #7dd3fc 25%,
     #24b4f1 50%,
     #1e80ad 75%,
-    #05415f 100%
+    #05415f 100% */
+
+    /* Avec l'orange */
+    #efb160 0%,
+    #e39e4e 25%,
+    #c57d30 50%,
+    #b37120 75%,
+    #ab5e20 100%
   );
   background-attachment: fixed;
 }
@@ -149,7 +156,7 @@ body.auth-page {
   font-weight: 600;
   font-family: inherit;
   color: #fff;
-  background: var(--auth-primary);
+  background: var(--primary);
   border: none;
   border-radius: var(--auth-radius-sm);
   cursor: pointer;
@@ -157,7 +164,12 @@ body.auth-page {
 }
 
 .auth-form .btn-auth:hover {
-  background: var(--auth-primary-hover);
+  background: var(--secondary);
+}
+
+.auth-form .btn-auth:active {
+  background: var(--secondary);
+  transform: translateY(-2px);
 }
 
 .auth-form .btn-auth i {
