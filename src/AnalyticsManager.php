@@ -218,6 +218,8 @@ class AnalyticsManager
                     u.id,
                     u.name,
                     u.email,
+                    c.code AS country_code,
+                    c.name AS country_name,
                     COUNT(o.id) as total_orders,
                     COUNT(CASE WHEN o.newstat = 'deliver' THEN 1 END) as delivered_orders,
                     COUNT(CASE WHEN o.newstat = 'canceled' THEN 1 END) as cancelled_orders,
@@ -225,6 +227,7 @@ class AnalyticsManager
                     COALESCE(SUM(CASE WHEN o.newstat = 'deliver' THEN o.quantity ELSE 0 END), 0) as total_quantity_sold,
                     ROUND(COUNT(CASE WHEN o.newstat = 'deliver' THEN 1 END) * 100.0 / NULLIF(COUNT(o.id), 0), 2) as conversion_rate
                 FROM users u
+                LEFT JOIN countries c ON (u.country = c.code OR u.country = CAST(c.id AS CHAR))
                 LEFT JOIN orders o ON u.id = o.manager_id";
 
             $params = [];
@@ -236,7 +239,7 @@ class AnalyticsManager
 
             $sql .= "
                 WHERE u.role = 0 AND u.is_active = 1
-                GROUP BY u.id, u.name, u.email
+                GROUP BY u.id, u.name, u.email, c.code, c.name
                 ORDER BY total_quantity_sold DESC, total_revenue DESC
             ";
 

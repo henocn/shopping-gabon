@@ -29,12 +29,14 @@ $expensesByType = [];
 $revenueByCountry = [];
 $topProducts = [];
 $salesSummary = null;
+$totalRevenueAllStatuses = 0;
 $assistantsRanking = [];
 
 try {
     $expenses = $finance->getExpenses($dateFrom, $dateTo . ' 23:59:59', $filterType !== '' ? $filterType : null, 100, 0);
     $expensesByType = $finance->getExpensesSummary($dateFrom, $dateTo . ' 23:59:59');
     $salesSummary = $finance->getSalesCostsAndExpensesSummary($dateFrom, $dateTo . ' 23:59:59');
+    $totalRevenueAllStatuses = $finance->getTotalRevenueAllStatuses($dateFrom, $dateTo . ' 23:59:59');
     $revenueByCountry = $finance->getRevenueByCountry($dateFrom, $dateTo . ' 23:59:59');
     $topProducts = $finance->getTopProfitableProducts(10, $dateFrom, $dateTo . ' 23:59:59');
     $assistantsRanking = $analytics->getAssistantsRanking($dateFrom, $dateTo . ' 23:59:59');
@@ -140,6 +142,15 @@ $expenseTypes = [
                     <div class="col-md-3 col-6">
                         <div class="card shadow-sm h-100">
                             <div class="card-body">
+                                <div class="text-muted small">Chiffre d'affaires global</div>
+                                <div class="fw-bold fs-5"><?php echo number_format($totalRevenueAllStatuses, 0, ',', ' '); ?> FCFA</div>
+                                <div class="small">Tous statuts confondus</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-body">
                                 <div class="text-muted small">Coût d'achat</div>
                                 <div class="fw-bold fs-5"><?php echo number_format($salesSummary['total_purchase_cost'], 0, ',', ' '); ?> FCFA</div>
                             </div>
@@ -177,6 +188,7 @@ $expenseTypes = [
                         <tr>
                             <th scope="col">Rang</th>
                             <th scope="col">Assistante</th>
+                            <th scope="col">Pays</th>
                             <th scope="col" class="text-end">Produits vendus</th>
                             <th scope="col" class="text-end">CA livraison (FCFA)</th>
                             <th scope="col" class="text-end">Commandes traitées</th>
@@ -186,20 +198,17 @@ $expenseTypes = [
                     <tbody>
                         <?php if (empty($assistantsRanking)): ?>
                             <tr>
-                                <td colspan="6" class="text-center text-muted">Aucune assistante ou aucune commande sur la période.</td>
+                                <td colspan="7" class="text-center text-muted">Aucune assistante ou aucune commande sur la période.</td>
                             </tr>
                         <?php else: ?>
                             <?php $rang = 1; foreach ($assistantsRanking as $a): ?>
                                 <tr>
                                     <td class="text-center"><?php echo $rang++; ?></td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <i class='bx bxs-user-circle' style="font-size: 1.5rem; color: var(--purple);"></i>
-                                            <div>
-                                                <div class="fw-medium"><?php echo htmlspecialchars($a['name']); ?></div>
-                                                <div class="small text-muted"><?php echo htmlspecialchars($a['email']); ?></div>
-                                            </div>
-                                        </div>
+                                    <td class="assistant-name-cell" title="<?php echo htmlspecialchars(trim($a['name'] ?? '') . ' — ' . ($a['email'] ?? '')); ?>">
+                                        <?php echo htmlspecialchars(trim($a['name'] ?? '—')); ?>
+                                    </td>
+                                    <td class="assistant-country-cell" title="<?php echo htmlspecialchars($a['country_name'] ?? $a['country_code'] ?? '—'); ?>">
+                                        <?php echo htmlspecialchars($a['country_name'] ?? $a['country_code'] ?? '—'); ?>
                                     </td>
                                     <td class="text-end"><?php echo number_format((int)($a['total_quantity_sold'] ?? 0), 0, ',', ' '); ?></td>
                                     <td class="text-end"><?php echo number_format((float)($a['total_revenue'] ?? 0), 0, ',', ' '); ?></td>

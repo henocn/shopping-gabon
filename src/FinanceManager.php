@@ -405,6 +405,26 @@ class FinanceManager
     }
 
     /**
+     * Chiffre d'affaires global sur la période (tous statuts confondus).
+     */
+    public function getTotalRevenueAllStatuses($dateFrom, $dateTo)
+    {
+        try {
+            $stmt = $this->pdo->prepare("
+                SELECT COALESCE(SUM(total_price), 0) AS total_revenue
+                FROM orders
+                WHERE created_at BETWEEN ? AND ?
+            ");
+            $stmt->execute([$dateFrom, $dateTo]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return (float) ($row['total_revenue'] ?? 0);
+        } catch (\Exception $e) {
+            error_log("Erreur getTotalRevenueAllStatuses: " . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
      * Résumé ventes / coûts d'achat / dépenses pour une période (sans product_current_costs).
      */
     public function getSalesCostsAndExpensesSummary($dateFrom, $dateTo)

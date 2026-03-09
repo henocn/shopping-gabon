@@ -201,7 +201,7 @@ class Product
         $req = $this->bd->prepare("SELECT u.id, u.name, u.email, c.code AS country_code, c.name AS country_name
             FROM users u
             INNER JOIN product_managers pm ON u.id = pm.manager_id
-            LEFT JOIN countries c ON u.country = c.code
+            LEFT JOIN countries c ON u.country = c.id
             WHERE pm.product_id = :product_id");
         $req->execute(['product_id' => $productId]);
         return $req->fetchAll(PDO::FETCH_ASSOC);

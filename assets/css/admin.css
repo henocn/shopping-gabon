@@ -687,10 +687,11 @@
   color: #fff;
 }
 
-/* Cellules tronquées (client, produit, notes) */
+/* Cellules tronquées (client, produit, notes, assistante) */
 .product-name-cell,
 .note-cell,
-.client-name-cell {
+.client-name-cell,
+.assistant-name-cell {
   max-width: 200px;
   white-space: nowrap;
   overflow: hidden;
@@ -701,7 +702,8 @@
 
 .product-name-cell:hover,
 .note-cell:hover,
-.client-name-cell:hover {
+.client-name-cell:hover,
+.assistant-name-cell:hover {
   overflow: visible;
   white-space: normal;
   word-break: break-word;

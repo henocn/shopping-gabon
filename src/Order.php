@@ -83,14 +83,20 @@ class Order
             o.client_adress,
             o.client_note,
             o.manager_note,
+            o.manager_id,
             o.newstat,
             o.created_at,
             o.updated_at,
             COALESCE(pc.selling_price, 0) AS unit_price,
             COALESCE(p.name, 'Produit supprimé') AS product_name,
-            COALESCE(pp.name, '') AS pack_name
+            COALESCE(pp.name, '') AS pack_name,
+            COALESCE(u.name, '—') AS assistant_name,
+            uc.name AS assistant_country_name,
+            uc.code AS assistant_country_code
         FROM orders o
         LEFT JOIN products p ON p.id = o.product_id
+        LEFT JOIN users u ON u.id = o.manager_id
+        LEFT JOIN countries uc ON (u.country = uc.code OR u.country = CAST(uc.id AS CHAR))
         LEFT JOIN product_countries pc 
             ON pc.product_id = p.id 
            AND pc.country_id = o.client_country
@@ -148,9 +154,14 @@ class Order
             o.updated_at,
             COALESCE(pc.selling_price, 0) AS unit_price,
             COALESCE(p.name, 'Produit supprimé') AS product_name,
-            COALESCE(pp.name, '') AS pack_name
+            COALESCE(pp.name, '') AS pack_name,
+            COALESCE(u.name, '—') AS assistant_name,
+            uc.name AS assistant_country_name,
+            uc.code AS assistant_country_code
         FROM orders o
         LEFT JOIN products p ON p.id = o.product_id
+        LEFT JOIN users u ON u.id = o.manager_id
+        LEFT JOIN countries uc ON (u.country = uc.code OR u.country = CAST(uc.id AS CHAR))
         LEFT JOIN product_countries pc
             ON pc.product_id = p.id
            AND pc.country_id = o.client_country
@@ -188,9 +199,14 @@ class Order
             orders.newstat,
             orders.updated_at,
             COALESCE(products.name, 'Produit supprimé') AS product_name,
-            COALESCE(products.image, '') AS product_image
+            COALESCE(products.image, '') AS product_image,
+            COALESCE(u.name, '—') AS assistant_name,
+            uc.name AS assistant_country_name,
+            uc.code AS assistant_country_code
         FROM orders
         LEFT JOIN products ON products.id = orders.product_id
+        LEFT JOIN users u ON u.id = orders.manager_id
+        LEFT JOIN countries uc ON (u.country = uc.code OR u.country = CAST(uc.id AS CHAR))
         WHERE orders.updated_at >= CURDATE()
           AND orders.updated_at < CURDATE() + INTERVAL 1 DAY
           AND orders.newstat = 'deliver'
@@ -218,9 +234,14 @@ class Order
             orders.newstat,
             orders.updated_at,
             COALESCE(products.name, 'Produit supprimé') AS product_name,
-            COALESCE(products.image, '') AS product_image
+            COALESCE(products.image, '') AS product_image,
+            COALESCE(u.name, '—') AS assistant_name,
+            uc.name AS assistant_country_name,
+            uc.code AS assistant_country_code
         FROM orders
         LEFT JOIN products ON products.id = orders.product_id
+        LEFT JOIN users u ON u.id = orders.manager_id
+        LEFT JOIN countries uc ON (u.country = uc.code OR u.country = CAST(uc.id AS CHAR))
         WHERE orders.updated_at >= CURDATE()
           AND orders.updated_at < CURDATE() + INTERVAL 1 DAY
           AND orders.newstat = 'deliver'
