@@ -133,26 +133,33 @@ $displayDescription = $product['description'];
                             <div class="store-field">
                                 <label for="client_name">Nom complet</label>
                                 <input type="text" id="client_name" name="client_name" class="store-input" placeholder="Jean Dupont" required>
-                        <div class="phone-input-wrapper">
-                            <select name="client_country" id="client_country_select" class="form-control-country" required aria-label="Pays (indicatif)">
-                                <?php foreach ($productCountries as $ctry): ?>
-                                    <?php
-                                    $flag = countryCodeToFlagEntity($ctry['code'] ?? '');
-                                    $isSelected = ($selectedCountryId !== null && (int)$ctry['id'] === $selectedCountryId);
-                                    ?>
-                                    <option value="<?= (int)$ctry['id']; ?>" data-price="<?= (int)($ctry['selling_price'] ?? 0); ?>" <?= $isSelected ? 'selected' : ''; ?>>
-                                        <?= $flag ? $flag . ' ' : '' ?><?= htmlspecialchars($ctry['phone_code'] ?? ''); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <input type="tel" name="client_phone" class="form-control-custom"
-                                placeholder="Numéro" required>
-                        </div>
-                        <small class="form-hint">Le prix ci-dessus s’adapte au pays sélectionné.</small>
-                        <input type="text" name="client_adress" class="form-control-custom"
-                            placeholder="Ville, Quartier" required>
-                        <textarea name="client_note" class="form-control-custom" rows="2"
-                            placeholder="Note éventuelle"></textarea>
+                            </div>
+                            <div class="store-field">
+                                <label for="client_country_select">Contact</label>
+                                <div class="phone-input-wrapper">
+                                    <select name="client_country" id="client_country_select" class="form-control-country" required>
+                                        <?php foreach ($productCountries as $ctry): ?>
+                                            <?php
+                                            $flag = countryCodeToFlagEntity($ctry['code'] ?? '');
+                                            $isSelected = ($selectedCountryId !== null && (int)$ctry['id'] === $selectedCountryId);
+                                            ?>
+                                            <option value="<?= (int)$ctry['id']; ?>" data-price="<?= (int)($ctry['selling_price'] ?? 0); ?>" <?= $isSelected ? 'selected' : ''; ?>>
+                                                <?= $flag ? $flag . ' ' : '' ?><?= htmlspecialchars($ctry['phone_code'] ?? ''); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <input type="tel" id="client_phone" name="client_phone" class="form-control-custom" placeholder="Numéro" required>
+                                </div>
+                                <small class="form-hint">Le prix ci-dessus s’adapte au pays sélectionné.</small>
+                            </div>
+                            <div class="store-field">
+                                <label for="client_adress">Adresse</label>
+                                <input type="text" id="client_adress" name="client_adress" class="form-control-custom" placeholder="Ville, Quartier" required>
+                            </div>
+                            <div class="store-field">
+                                <label for="client_note">Note</label>
+                                <textarea id="client_note" name="client_note" class="form-control-custom" rows="2" placeholder="Note éventuelle"></textarea>
+                            </div>
 
                         <input type="hidden" name="product_id" value="<?= $product['id']; ?>">
                         <input type="hidden" name="valider" value="commander">
