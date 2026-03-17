@@ -23,8 +23,9 @@ class PushNotification
 
     /**
      * Envoie une notification "nouvelle commande" à tous les abonnés.
+     * $clientName et $productName sont optionnels, mais permettent un message plus détaillé.
      */
-    public function notifyNewOrder(): void
+    public function notifyNewOrder(string $clientName = null, string $productName = null): void
     {
         $vapid = $this->loadVapid();
         if (!$vapid || empty($vapid['publicKey']) || empty($vapid['privateKey'])) {
@@ -39,9 +40,18 @@ class PushNotification
             return;
         }
 
+        $title = 'Nouvelle commande';
+        if ($clientName && $productName) {
+            $body = sprintf("%s vient de passer une commande pour %s.", $clientName, $productName);
+        } elseif ($productName) {
+            $body = sprintf("Une nouvelle commande a été passée pour %s.", $productName);
+        } else {
+            $body = "Une nouvelle commande vient d'être passée.";
+        }
+
         $payload = json_encode([
-            'title' => 'Nouvelle commande',
-            'body'  => "Une nouvelle commande vient d'être passée.",
+            'title' => $title,
+            'body'  => $body,
         ]);
 
         $auth = [

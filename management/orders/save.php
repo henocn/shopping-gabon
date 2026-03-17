@@ -94,7 +94,10 @@ if (isset($_POST['valider'])) {
                 if ($orderManager->CreateOrder($data)) {
                     try {
                         $push = new \src\PushNotification($cnx);
-                        $push->notifyNewOrder();
+                        $push->notifyNewOrder(
+                            (string)($_POST['client_name'] ?? ''),
+                            (string)($product['name'] ?? '')
+                        );
                     } catch (\Throwable $e) {
                         // Ne pas bloquer la commande si la push échoue
                     }
