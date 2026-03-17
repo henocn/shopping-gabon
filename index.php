@@ -399,7 +399,13 @@ $displayDescription = $product['description'];
                     document.querySelectorAll('.commander-btn, .btn-submit-order').forEach(function(btn) {
                         btn.disabled = true;
                         btn.setAttribute('aria-disabled', 'true');
-                        btn.style.display = 'none';
+                        btn.classList.add('btn-disabled-order-limit');
+                        const labelEl = btn.querySelector('span');
+                        if (labelEl) {
+                            labelEl.textContent = 'Limite atteinte, l’assistance vous contactera.';
+                        } else {
+                            btn.textContent = 'Limite atteinte, l’assistance vous contactera.';
+                        }
                     });
                 }
             }
@@ -507,9 +513,9 @@ $displayDescription = $product['description'];
 
             const productId = '<?= $product['id']; ?>';
             const orderLimitApi = window.createOrderLimit(productId, {
-                limit: 2,
+                limit: 3,
                 doubleClickGuardMs: 2500,
-                windowMs: 48 * 60 * 60 * 1000
+                windowMs: 5 * 60 * 60 * 1000
             });
             orderLimitApi.applyLimitState();
 
