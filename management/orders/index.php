@@ -130,7 +130,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                   <th scope="col">ID</th>
                                                                   <th scope="col">Client</th>
                                                                   <th scope="col">Contact</th>
-                                                                  <th scope="col">Assistante</th>
+                                                                       <th scope="col">Note client</th>
                                                                   <th scope="col">Produit</th>
                                                                   <th scope="col">Qté</th>
                                                                   <th scope="col">Prix Unit.</th>
@@ -164,11 +164,11 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                         <td>#<?= htmlspecialchars($order['order_id']) ?></td>
                                                                         <td class="client-name-cell" title="<?= htmlspecialchars($order['client_name']) ?>"><?= htmlspecialchars($order['client_name']) ?></td>
                                                                         <td><?= htmlspecialchars($order['client_phone']) ?></td>
-                                                                        <td class="assistant-name-cell" title="<?= htmlspecialchars(($order['assistant_name'] ?? '—') . (isset($order['assistant_country_name']) && $order['assistant_country_name'] ? ' — ' . $order['assistant_country_name'] : '')); ?>"><?= htmlspecialchars(($order['assistant_name'] ?? '—') . (isset($order['assistant_country_name']) && $order['assistant_country_name'] ? ' (' . $order['assistant_country_name'] . ')' : '')); ?></td>
+                                                                          <td class="note-cell" title="<?= htmlspecialchars($order['client_note'] ?? '') ?>"><?= htmlspecialchars(trim((string)($order['client_note'] ?? '')) !== '' ? $order['client_note'] : '—') ?></td>
                                                                         <td class="product-name-cell" title="<?= htmlspecialchars($order['product_name']) ?>"><?= htmlspecialchars($order['product_name']) ?></td>
                                                                         <td><?= (int)$order['quantity'] ?></td>
-                                                                        <td><?= number_format($order['unit_price'] ?? 0, 0, ',', ' ') ?> FCFA</td>
-                                                                        <td><?= number_format($order['total_price'], 0, ',', ' ') ?> FCFA</td>
+                                                                        <td><?= number_format($order['unit_price'] ?? 0, 0, ',', ' ') ?> F</td>
+                                                                        <td><?= number_format($order['total_price'], 0, ',', ' ') ?> F</td>
                                                                         <td class="note-cell" title="<?= htmlspecialchars($order['manager_note'] ?? '') ?>"><?= htmlspecialchars($order['manager_note'] ?? '') ?></td>
                                                                         <td><?= date('d/m/Y à H:i', strtotime($order['created_at'])) ?></td>
                                                                         <td>
@@ -236,7 +236,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                   <th scope="col">ID</th>
                                                                   <th scope="col">Client</th>
                                                                   <th scope="col">Contact</th>
-                                                                  <th scope="col">Assistante</th>
+                                                                       <th scope="col">Note client</th>
                                                                   <th scope="col">Produit</th>
                                                                   <th scope="col">Qté</th>
                                                                   <th scope="col">Prix Unitaire</th>
@@ -257,11 +257,11 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                         <td>#<?= htmlspecialchars($order['order_id']) ?></td>
                                                                         <td class="client-name-cell" title="<?= htmlspecialchars($order['client_name']) ?>"><?= htmlspecialchars($order['client_name']) ?></td>
                                                                         <td><?= htmlspecialchars($order['client_phone']) ?></td>
-                                                                        <td class="assistant-name-cell" title="<?= htmlspecialchars(($order['assistant_name'] ?? '—') . (isset($order['assistant_country_name']) && $order['assistant_country_name'] ? ' — ' . $order['assistant_country_name'] : '')); ?>"><?= htmlspecialchars(($order['assistant_name'] ?? '—') . (isset($order['assistant_country_name']) && $order['assistant_country_name'] ? ' (' . $order['assistant_country_name'] . ')' : '')); ?></td>
+                                                                          <td class="note-cell" title="<?= htmlspecialchars($order['client_note'] ?? '') ?>"><?= htmlspecialchars(trim((string)($order['client_note'] ?? '')) !== '' ? $order['client_note'] : '—') ?></td>
                                                                         <td class="product-name-cell" title="<?= htmlspecialchars($order['product_name']) ?>"><?= htmlspecialchars($order['product_name']) ?></td>
                                                                         <td><?= (int)$order['quantity'] ?></td>
-                                                                        <td><?= number_format($order['unit_price'] ?? 0, 0, ',', ' ') ?> FCFA</td>
-                                                                        <td><?= number_format($order['total_price'], 0, ',', ' ') ?> FCFA</td>
+                                                                        <td><?= number_format($order['unit_price'] ?? 0, 0, ',', ' ') ?> F</td>
+                                                                        <td><?= number_format($order['total_price'], 0, ',', ' ') ?> F</td>
                                                                         <td class="note-cell" title="<?= htmlspecialchars($order['manager_note'] ?? '') ?>"><?= htmlspecialchars($order['manager_note'] ?? '') ?></td>
                                                                         <td><?= date('d/m/Y à H:i', strtotime($order['created_at'])) ?></td>
                                                                         <td>
@@ -295,10 +295,10 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                   <th scope="col">ID</th>
                                                                   <th scope="col">Client</th>
                                                                   <th scope="col">Contact</th>
-                                                                  <th scope="col">Assistante</th>
+                                                                  <th scope="col">Note client</th>
                                                                   <th scope="col">Produit</th>
                                                                   <th scope="col">Qté</th>
-                                                                  <th scope="col">Prix Unit.</th>
+                                                                  <!-- <th scope="col">Prix Unit.</th> -->
                                                                   <th scope="col">Prix Total</th>
                                                                   <th scope="col">Mes Notes</th>
                                                                   <th scope="col">Date</th>
@@ -316,11 +316,11 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                         <td>#<?= htmlspecialchars($order['order_id']) ?></td>
                                                                         <td class="client-name-cell" title="<?= htmlspecialchars($order['client_name']) ?>"><?= htmlspecialchars($order['client_name']) ?></td>
                                                                         <td><?= htmlspecialchars($order['client_phone']) ?></td>
-                                                                        <td class="assistant-name-cell" title="<?= htmlspecialchars(($order['assistant_name'] ?? '—') . (isset($order['assistant_country_name']) && $order['assistant_country_name'] ? ' — ' . $order['assistant_country_name'] : '')); ?>"><?= htmlspecialchars(($order['assistant_name'] ?? '—') . (isset($order['assistant_country_name']) && $order['assistant_country_name'] ? ' (' . $order['assistant_country_name'] . ')' : '')); ?></td>
+                                                                          <td class="note-cell" title="<?= htmlspecialchars($order['client_note'] ?? '') ?>"><?= htmlspecialchars(trim((string)($order['client_note'] ?? '')) !== '' ? $order['client_note'] : '—') ?></td>
                                                                         <td class="product-name-cell" title="<?= htmlspecialchars($order['product_name']) ?>"><?= htmlspecialchars($order['product_name']) ?></td>
                                                                         <td><?= (int)$order['quantity'] ?></td>
-                                                                        <td><?= number_format($order['unit_price'] ?? 0, 0, ',', ' ') ?> FCFA</td>
-                                                                        <td><?= number_format($order['total_price'], 0, ',', ' ') ?> FCFA</td>
+                                                                        <!-- <td><?= number_format($order['unit_price'] ?? 0, 0, ',', ' ') ?> F</td> -->
+                                                                        <td><?= number_format($order['total_price'], 0, ',', ' ') ?> F</td>
                                                                         <td class="note-cell" title="<?= htmlspecialchars($order['manager_note'] ?? '') ?>"><?= htmlspecialchars($order['manager_note'] ?? '') ?></td>
                                                                         <td><?= date('d/m/Y à H:i', strtotime($order['created_at'])) ?></td>
                                                                         <td>
@@ -377,7 +377,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                             <tr>
                                                                   <th>ID</th>
                                                                   <th>Client</th>
-                                                                  <th>Assistante</th>
+                                                                  <th>Note client</th>
                                                                   <th>Produit</th>
                                                                   <th>Qté</th>
                                                                   <th>Total</th>
@@ -389,10 +389,10 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                   <tr data-order-id="<?= (int)$order['order_id'] ?>">
                                                                         <td>#<?= $order['order_id'] ?></td>
                                                                         <td class="client-name-cell" title="<?= htmlspecialchars($order['client_name']) ?>"><?= htmlspecialchars($order['client_name']) ?></td>
-                                                                        <td class="assistant-name-cell" title="<?= htmlspecialchars(($order['assistant_name'] ?? '—') . (isset($order['assistant_country_name']) && $order['assistant_country_name'] ? ' — ' . $order['assistant_country_name'] : '')); ?>"><?= htmlspecialchars(($order['assistant_name'] ?? '—') . (isset($order['assistant_country_name']) && $order['assistant_country_name'] ? ' (' . $order['assistant_country_name'] . ')' : '')); ?></td>
+                                                                        <td class="note-cell" title="<?= htmlspecialchars($order['client_note'] ?? '') ?>"><?= htmlspecialchars(trim((string)($order['client_note'] ?? '')) !== '' ? $order['client_note'] : '—') ?></td>
                                                                         <td class="product-name-cell" title="<?= htmlspecialchars($order['product_name']) ?>"><?= htmlspecialchars($order['product_name']) ?></td>
                                                                         <td><?= $order['quantity'] ?></td>
-                                                                        <td><?= number_format($order['total_price']) ?> FCFA</td>
+                                                                        <td><?= number_format($order['total_price']) ?> F</td>
                                                                         <td><?= date('d/m/Y H:i', strtotime($order['updated_at'])) ?></td>
                                                                   </tr>
                                                             <?php endforeach; ?>
@@ -421,17 +421,9 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                               </div>
                               <form action="save.php" method="POST" id="orderForm<?= $order['order_id'] ?>">
                                     <div class="modal-body py-2">
-                                          <?php if (!empty($order['client_note'])): ?>
-                                                <div class="alert alert-info mb-2 py-1 small">
-                                                      <strong><i class='bx bx-message-detail me-1'></i>Note:</strong>
-                                                      <?= nl2br(htmlspecialchars($order['client_note'])) ?>
-                                                </div>
-                                          <?php endif; ?>
-
                                           <div class="order-modal-summary">
                                                 <div class="d-flex flex-column flex-sm-row justify-content-between gap-1">
                                                       <span><strong><?= htmlspecialchars($order['client_name']) ?></strong> (<?= htmlspecialchars($order['client_phone']) ?>)</span>
-                                                      <span class="text-muted">Assistante : <strong><?= htmlspecialchars(($order['assistant_name'] ?? '—') . (isset($order['assistant_country_name']) && $order['assistant_country_name'] ? ' (' . $order['assistant_country_name'] . ')' : '')); ?></strong></span>
                                                 </div>
                                                 <div class="mt-1"><span class="text-muted">Produit : <strong><?= htmlspecialchars($order['product_name']) ?></strong></span></div>
                                           </div>

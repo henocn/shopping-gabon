@@ -615,6 +615,30 @@
   border-color: black !important;
 }
 
+#orders-table tbody tr.order-row-remind > td {
+    background-color: rgba(59, 130, 246, 0.18);
+}
+
+#orders-table tbody tr.order-row-remind:hover > td {
+    background-color: rgba(59, 130, 246, 0.28);
+}
+
+#orders-table tbody tr.order-row-unreachable > td {
+    background-color: rgba(239, 68, 68, 0.18);
+}
+
+#orders-table tbody tr.order-row-unreachable:hover > td {
+    background-color: rgba(239, 68, 68, 0.28);
+}
+
+#orders-table tbody tr.order-row-processing > td {
+    background-color: rgba(250, 204, 21, 0.2);
+}
+
+#orders-table tbody tr.order-row-processing:hover > td {
+    background-color: rgba(250, 204, 21, 0.32);
+}
+
 #orders-delivered-table thead th {
   background-color: var(--purple);
   color: var(--paper);
