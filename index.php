@@ -163,7 +163,6 @@ $displayDescription = $product['description'];
 
                         <input type="hidden" name="product_id" value="<?= $product['id']; ?>">
                         <input type="hidden" name="valider" value="commander">
-                    </div>
                     <div class="modal-footer-custom">
                         <button type="submit" class="btn-submit-order">
                             <i class='bx bx-check-circle'></i>
