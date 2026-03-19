@@ -797,7 +797,8 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
 
             function registerPushAndSubscribe(publicKey) {
                   if (!('serviceWorker' in navigator)) return Promise.reject();
-                  return navigator.serviceWorker.register('../../sw.js', { scope: '../../' })
+                  // Utiliser des chemins absolus pour éviter les problèmes de scope selon l'URL
+                  return navigator.serviceWorker.register('/sw.js', { scope: '/' })
                         .then(function(reg) {
                               return reg.pushManager.subscribe({
                                     userVisibleOnly: true,

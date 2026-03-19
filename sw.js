@@ -2,15 +2,35 @@
 self.addEventListener('push', function (event) {
     var payload = { title: 'Nouvelle commande', body: "Une nouvelle commande vient d'être passée." };
     if (event.data) {
+        // Robustesse : le payload peut être du JSON ou du texte selon l'envoi WebPush
         try {
             payload = event.data.json();
-        } catch (e) {}
+        } catch (e) {
+            try {
+                // event.data.text() est asynchrone mais dans un try simple on peut tenter un fallback
+                // (si ça échoue on gardera le payload par défaut)
+                var txt = event.data.text ? event.data.text() : null;
+                if (txt && typeof txt.then === 'function') {
+                    event.waitUntil(txt.then(function (t) {
+                        payload.body = t;
+                        var nonce = payload.nonce || String(Date.now());
+                        return self.registration.showNotification(payload.title || 'Nouvelle commande', {
+                            body: payload.body || "Une nouvelle commande vient d'être passée.",
+                            tag: 'new-order-' + nonce,
+                            requireInteraction: false
+                        });
+                    }));
+                    return;
+                }
+            } catch (e2) {}
+        }
     }
+
+    var nonce = payload.nonce || String(Date.now());
     event.waitUntil(
         self.registration.showNotification(payload.title || 'Nouvelle commande', {
-            body: payload.body || "Une nouvelle commande vient d'être passée.",
-            icon: new URL('assets/images/idx121.png', self.registration.scope).href,
-            tag: 'new-order',
+            body: payload.body || payload.message || "Une nouvelle commande vient d'être passée.",
+            tag: 'new-order-' + nonce,
             requireInteraction: false
         })
     );

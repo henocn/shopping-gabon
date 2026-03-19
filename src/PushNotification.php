@@ -40,6 +40,7 @@ class PushNotification
             return;
         }
 
+        $nonce = bin2hex(random_bytes(8));
         $title = 'Nouvelle commande';
         if ($clientName && $productName) {
             $body = sprintf("%s vient de passer une commande pour %s.", $clientName, $productName);
@@ -52,6 +53,7 @@ class PushNotification
         $payload = json_encode([
             'title' => $title,
             'body'  => $body,
+            'nonce' => $nonce,
         ]);
 
         $auth = [
