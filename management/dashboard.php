@@ -232,7 +232,7 @@ $canceledOrders = $orderObj->getOrdersByStatus('canceled');*/
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded'
                     },
-                    body: new URLSearchParams({
+                    body: new window.URLSearchParams({
                         days_ago: daysAgo
                     })
                 });

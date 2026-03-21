@@ -748,8 +748,8 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   if (!('Notification' in window)) {
                         return;
                   }
-                  if (Notification.permission === 'default') {
-                        Notification.requestPermission();
+                  if (window.Notification.permission === 'default') {
+                        window.Notification.requestPermission();
                   }
             }
 
@@ -769,9 +769,9 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                     : data.new_count + " nouvelles commandes viennent d'être passées.";
                               lastOrderId = data.last_id;
 
-                              if ('Notification' in window && Notification.permission === 'granted') {
+                              if ('Notification' in window && window.Notification.permission === 'granted') {
                                     try {
-                                          new Notification("Nouvelle commande", { body: msg });
+                                          new window.Notification("Nouvelle commande", { body: msg });
                                     } catch (e) {}
                               }
                               if (typeof window.showNotification === 'function') {
@@ -786,7 +786,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   var padding = '='.repeat((4 - base64String.length % 4) % 4);
                   var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
                   var rawData = window.atob(base64);
-                  var output = new Uint8Array(rawData.length);
+                  var output = new window.Uint8Array(rawData.length);
                   for (var i = 0; i < rawData.length; i++) output[i] = rawData.charCodeAt(i);
                   return output;
             }
@@ -802,7 +802,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                               });
                         })
                         .then(function(sub) {
-                              var payload = sub.toJSON ? sub.toJSON() : { endpoint: sub.endpoint, keys: { p256dh: btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey('p256dh')))), auth: btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey('auth')))) } };
+                              var payload = sub.toJSON ? sub.toJSON() : { endpoint: sub.endpoint, keys: { p256dh: btoa(String.fromCharCode.apply(null, new window.Uint8Array(sub.getKey('p256dh')))), auth: btoa(String.fromCharCode.apply(null, new window.Uint8Array(sub.getKey('auth')))) } };
                               return fetch('push-subscribe.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                         });
             }
@@ -823,15 +823,15 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                               var banner = document.getElementById('push-notif-banner');
                               var btn = document.getElementById('push-enable-btn');
                               if (!banner || !btn) return;
-                              if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+                              if (typeof window.Notification !== 'undefined' && window.Notification.permission === 'default') {
                                     banner.classList.remove('d-none');
                                     banner.classList.add('d-flex');
-                              } else if (Notification.permission === 'granted') {
+                              } else if (window.Notification.permission === 'granted') {
                                     registerPushAndSubscribe(data.publicKey).catch(function() {});
                               }
                               btn.addEventListener('click', function() {
-                                    if (typeof Notification === 'undefined') return;
-                                    Notification.requestPermission().then(function(perm) {
+                                    if (typeof window.Notification === 'undefined') return;
+                                    window.Notification.requestPermission().then(function(perm) {
                                           if (perm !== 'granted') return;
                                           banner.classList.add('d-none');
                                           registerPushAndSubscribe(data.publicKey).then(function() {
