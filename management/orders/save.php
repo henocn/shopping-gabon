@@ -130,7 +130,11 @@ if (isset($_POST['valider'])) {
                     exit;
                 }
 
-                $newStatus = htmlspecialchars($_POST['newstat'] ?? '');
+                $allowedStatuses = ['new', 'remind', 'unreachable', 'processing', 'deliver', 'canceled'];
+                $incomingStatus = strtolower(trim((string)($_POST['newstat'] ?? '')));
+                $newStatus = in_array($incomingStatus, $allowedStatuses, true)
+                    ? $incomingStatus
+                    : (string)$existingOrder['newstat'];
                 $updatedQuantity = (int)($_POST['quantity'] ?? $existingOrder['quantity']);
                 $updatedTotal = (float)($_POST['total_price'] ?? $existingOrder['total_price']);
                 $managerNote = htmlspecialchars($_POST['manager_note'] ?? '');

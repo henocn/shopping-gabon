@@ -481,9 +481,9 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                               break;
                                                                   }
                                                                   ?>
-                                                                  <option value="">-- Choisir une action --</option>
+                                                                  <option value="" selected>-- Choisir une action --</option>
                                                                   <?php foreach ($actions as $action): ?>
-                                                                        <option name="newstat" value="<?= $action['value'] ?>" <?= $order['newstat'] == $action['value'] ? 'selected' : '' ?>>
+                                                                        <option name="newstat" value="<?= $action['value'] ?>">
                                                                               <?= $action['label'] ?>
                                                                         </option>
                                                                   <?php endforeach; ?>
