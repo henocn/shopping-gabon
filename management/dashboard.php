@@ -153,14 +153,109 @@ $canceledOrders = $orderObj->getOrdersByStatus('canceled');*/
                                 Voir les commandes à traiter
                             </a>
                         </div>
+
+                        <div class="admin-cleanup-block">
+                            <p class="admin-small-label">Maintenance</p>
+                            <p class="admin-orders-line">
+                                Supprimez les anciennes commandes non livrées pour libérer l'espace.
+                            </p>
+                            <button type="button" class="btn-liberation" data-bs-toggle="modal" data-bs-target="#cleanupModal">
+                                <i class='bx bx-trash me-1'></i>Libérer
+                            </button>
+                        </div>
                     </div>
                 </section>
             </div>
         </section>
     </main>
 
+    <!-- Modal Nettoyage des commandes -->
+    <div class="modal fade" id="cleanupModal" tabindex="-1" aria-labelledby="cleanupModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title" id="cleanupModalLabel">
+                        <i class='bx bx-trash me-2'></i>Libérer l'espace
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <form id="cleanupForm">
+                    <div class="modal-body">
+                        <p class="text-muted mb-3">
+                            Supprimez les commandes anciennement créées qui ne sont pas en cours de traitement ou livrées.
+                        </p>
+                        <div class="mb-3">
+                            <label for="daysInput" class="form-label fw-bold">Supprimer les commandes créées avant :</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="daysInput" name="days_ago" value="30" min="1" max="365" required>
+                                <span class="input-group-text">jours</span>
+                            </div>
+                            <small class="text-muted d-block mt-2">
+                                Les commandes en cours (processing) et livrées (deliver) ne seront jamais supprimées.
+                            </small>
+                        </div>
+                        <div class="alert alert-info" role="alert">
+                            <i class='bx bx-info-circle me-2'></i>
+                            <strong>Exemple :</strong> Une valeur de 20 supprimera les commandes créées avant 20 jours à partir d'aujourd'hui.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            Annuler
+                        </button>
+                        <button type="submit" class="btn btn-warning">
+                            <i class='bx bx-trash me-1'></i>Confirmer la suppression
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <?php include '../includes/footer.php'; ?>
     <script src="../assets/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Gestion du formulaire de nettoyage
+        document.getElementById('cleanupForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const daysAgo = document.getElementById('daysInput').value;
+            const btn = this.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
+            
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Traitement...';
+            
+            try {
+                const response = await fetch('cleanup-orders.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: new URLSearchParams({
+                        days_ago: daysAgo
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✓ Nettoyage réussi\n\n' + data.message);
+                    bootstrap.Modal.getInstance(document.getElementById('cleanupModal')).hide();
+                    this.reset();
+                    // Optionnel : rafraîchir les stats du dashboard
+                    location.reload();
+                } else {
+                    alert('✗ Erreur : ' + data.message);
+                }
+            } catch (error) {
+                alert('✗ Erreur réseau : ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        });
+    </script>
 </body>
 
 </html>

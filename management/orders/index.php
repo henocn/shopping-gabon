@@ -10,17 +10,35 @@ use src\Order;
 
 $cnx = Connectbd::getConnection();
 $orderManager = new Order($cnx);
-$orders = [];
-$deliveredToday = [];
+
+$groupedOrders = [
+      'to-process' => [],
+      'unreachable' => [],
+      'processing' => [],
+      'delivered' => []
+];
+
+$ordersForModals = [];
 
 if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
       if ((int)$_SESSION['role'] === 1) {
-            $orders = $orderManager->getAllOrders();
-            $deliveredToday = $orderManager->getOrdersToDay();
+            $groupedOrders['to-process'] = $orderManager->getOrdersByStatuses(['new', 'remind']);
+            $groupedOrders['unreachable'] = $orderManager->getOrdersByStatuses(['unreachable']);
+            $groupedOrders['processing'] = $orderManager->getOrdersByStatuses(['processing']);
+            $groupedOrders['delivered'] = $orderManager->getOrdersToDay();
       } else {
-            $orders = $orderManager->getOrdersByUserId((int)$_SESSION['user_id']);
-            $deliveredToday = $orderManager->getOrdersToDayByUserId((int)$_SESSION['user_id']);
+            $managerId = (int)$_SESSION['user_id'];
+            $groupedOrders['to-process'] = $orderManager->getOrdersByStatusesAndUserId(['new', 'remind'], $managerId);
+            $groupedOrders['unreachable'] = $orderManager->getOrdersByStatusesAndUserId(['unreachable'], $managerId);
+            $groupedOrders['processing'] = $orderManager->getOrdersByStatusesAndUserId(['processing'], $managerId);
+            $groupedOrders['delivered'] = $orderManager->getOrdersToDayByUserId($managerId);
       }
+
+      $ordersForModals = array_merge(
+            $groupedOrders['to-process'],
+            $groupedOrders['unreachable'],
+            $groupedOrders['processing']
+      );
 }
 ?>
 
@@ -58,33 +76,6 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                         </a>
                   </div>
             </div>
-
-            <?php
-
-            $groupedOrders = [
-                  'to-process' => [],  // new + remind
-                  'unreachable' => [], // unreachable
-                  'processing' => [],  // processing
-                  'delivered' => []    // delivered today
-            ];
-
-            // Répartir les commandes selon leur statut
-            foreach ($orders as $o) {
-                  if (isset($o['newstat'])) {
-                        if (in_array($o['newstat'], ['new', 'remind'])) {
-                              $groupedOrders['to-process'][] = $o;
-                        } elseif ($o['newstat'] === 'unreachable') {
-                              $groupedOrders['unreachable'][] = $o;
-                        } elseif ($o['newstat'] === 'processing') {
-                              $groupedOrders['processing'][] = $o;
-                        }
-                  }
-            }
-
-            // Ajouter les commandes livrées du jour
-            $groupedOrders['delivered'] = $deliveredToday;
-
-            ?>
 
             <!-- Navigation par onglets -->
             <ul class="nav nav-tabs" id="ordersTabs" role="tablist">
@@ -130,15 +121,14 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                   <th scope="col">ID</th>
                                                                   <th scope="col">Client</th>
                                                                   <th scope="col">Contact</th>
-                                                                               <th scope="col">Adresse</th>
-                                                                       <th scope="col">Note client</th>
+                                                                  <th scope="col">Adresse</th>
+                                                                  <th scope="col">Note client</th>
                                                                   <th scope="col">Produit</th>
-                                                                  <th scope="col">Qté</th>
-                                                                  <th scope="col">Prix Unit.</th>
+                                                                  <th scope="col">Qt</th>
                                                                   <th scope="col">Prix Total</th>
-                                                                  <th scope="col">Mes Notes</th>
-                                                                  <th scope="col">Date</th>
+                                                                  <th scope="col">Notes</th>
                                                                   <th scope="col">Actions</th>
+                                                                  <th scope="col">Date</th>
                                                             </tr>
                                                       </thead>
                                                       <tbody>
@@ -169,10 +159,8 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                           <td class="note-cell" title="<?= htmlspecialchars($order['client_note'] ?? '') ?>"><?= htmlspecialchars(trim((string)($order['client_note'] ?? '')) !== '' ? $order['client_note'] : '—') ?></td>
                                                                         <td class="product-name-cell" title="<?= htmlspecialchars($order['product_name']) ?>"><?= htmlspecialchars($order['product_name']) ?></td>
                                                                         <td><?= (int)$order['quantity'] ?></td>
-                                                                        <td><?= number_format($order['unit_price'] ?? 0, 0, ',', ' ') ?> F</td>
                                                                         <td><?= number_format($order['total_price'], 0, ',', ' ') ?> F</td>
                                                                         <td class="note-cell" title="<?= htmlspecialchars($order['manager_note'] ?? '') ?>"><?= htmlspecialchars($order['manager_note'] ?? '') ?></td>
-                                                                        <td><?= date('d/m/Y à H:i', strtotime($order['created_at'])) ?></td>
                                                                         <td>
                                                                               <?php if ($order['newstat'] === 'processing'): ?>
                                                                                     <!-- Boutons directs pour les commandes programmées -->
@@ -209,11 +197,14 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                                     <!-- Bouton modal pour traiter la commande (autres statuts) -->
                                                                                     <button class="btn btn-order-primary btn-sm" type="button"
                                                                                           data-bs-toggle="modal"
-                                                                                          data-bs-target="#orderModal<?= (int)$order['order_id'] ?>">
-                                                                                          Traiter
+                                                                                          data-bs-target="#orderModal<?= (int)$order['order_id'] ?>"
+                                                                                          title="Traiter"
+                                                                                          aria-label="Traiter">
+                                                                                          <i class='bx bx-edit-alt'></i>
                                                                                     </button>
                                                                               <?php endif; ?>
                                                                         </td>
+                                                                        <td><?= date('d/m/Y à H:i', strtotime($order['created_at'])) ?></td>
                                                                   </tr>
                                                             <?php endforeach; ?>
                                                       </tbody>
@@ -238,15 +229,14 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                   <th scope="col">ID</th>
                                                                   <th scope="col">Client</th>
                                                                   <th scope="col">Contact</th>
-                                                                               <th scope="col">Adresse</th>
-                                                                       <th scope="col">Note client</th>
+                                                                  <th scope="col">Adresse</th>
+                                                                  <th scope="col">Note client</th>
                                                                   <th scope="col">Produit</th>
-                                                                  <th scope="col">Qté</th>
-                                                                  <th scope="col">Prix Unitaire</th>
+                                                                  <th scope="col">Qt</th>
                                                                   <th scope="col">Prix Total</th>
-                                                                  <th scope="col">Mes Notes</th>
-                                                                  <th scope="col">Date</th>
+                                                                  <th scope="col">Notes</th>
                                                                   <th scope="col">Actions</th>
+                                                                  <th scope="col">Date</th>
                                                             </tr>
                                                       </thead>
                                                       <tbody>
@@ -264,17 +254,18 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                           <td class="note-cell" title="<?= htmlspecialchars($order['client_note'] ?? '') ?>"><?= htmlspecialchars(trim((string)($order['client_note'] ?? '')) !== '' ? $order['client_note'] : '—') ?></td>
                                                                         <td class="product-name-cell" title="<?= htmlspecialchars($order['product_name']) ?>"><?= htmlspecialchars($order['product_name']) ?></td>
                                                                         <td><?= (int)$order['quantity'] ?></td>
-                                                                        <td><?= number_format($order['unit_price'] ?? 0, 0, ',', ' ') ?> F</td>
                                                                         <td><?= number_format($order['total_price'], 0, ',', ' ') ?> F</td>
                                                                         <td class="note-cell" title="<?= htmlspecialchars($order['manager_note'] ?? '') ?>"><?= htmlspecialchars($order['manager_note'] ?? '') ?></td>
-                                                                        <td><?= date('d/m/Y à H:i', strtotime($order['created_at'])) ?></td>
                                                                         <td>
                                                                               <button class="btn btn-order-primary btn-sm" type="button"
                                                                                     data-bs-toggle="modal"
-                                                                                    data-bs-target="#orderModal<?= (int)$order['order_id'] ?>">
-                                                                                    Traiter
+                                                                                    data-bs-target="#orderModal<?= (int)$order['order_id'] ?>"
+                                                                                    title="Traiter"
+                                                                                    aria-label="Traiter">
+                                                                                    <i class='bx bx-edit-alt'></i>
                                                                               </button>
                                                                         </td>
+                                                                        <td><?= date('d/m/Y à H:i', strtotime($order['created_at'])) ?></td>
                                                                   </tr>
                                                             <?php endforeach; ?>
                                                       </tbody>
@@ -302,12 +293,12 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                   <th scope="col">Adresse</th>
                                                                   <th scope="col">Note client</th>
                                                                   <th scope="col">Produit</th>
-                                                                  <th scope="col">Qté</th>
+                                                                  <th scope="col">Qt</th>
                                                                   <!-- <th scope="col">Prix Unit.</th> -->
                                                                   <th scope="col">Prix Total</th>
-                                                                  <th scope="col">Mes Notes</th>
-                                                                  <th scope="col">Date</th>
+                                                                  <th scope="col">Notes</th>
                                                                   <th scope="col">Actions</th>
+                                                                  <th scope="col">Date</th>
                                                             </tr>
                                                       </thead>
                                                       <tbody>
@@ -328,7 +319,6 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                         <!-- <td><?= number_format($order['unit_price'] ?? 0, 0, ',', ' ') ?> F</td> -->
                                                                         <td><?= number_format($order['total_price'], 0, ',', ' ') ?> F</td>
                                                                         <td class="note-cell" title="<?= htmlspecialchars($order['manager_note'] ?? '') ?>"><?= htmlspecialchars($order['manager_note'] ?? '') ?></td>
-                                                                        <td><?= date('d/m/Y à H:i', strtotime($order['created_at'])) ?></td>
                                                                         <td>
                                                                               <div class="order-action-group">
                                                                                     <form method="POST" action="save.php" id="quickDeliverForm<?= $order['order_id'] ?>">
@@ -360,6 +350,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                                     </form>
                                                                               </div>
                                                                         </td>
+                                                                        <td><?= date('d/m/Y à H:i', strtotime($order['created_at'])) ?></td>
                                                                   </tr>
                                                             <?php endforeach; ?>
                                                       </tbody>
@@ -386,7 +377,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                   <th>Adresse</th>
                                                                   <th>Note client</th>
                                                                   <th>Produit</th>
-                                                                  <th>Qté</th>
+                                                                  <th>Qt</th>
                                                                   <th>Total</th>
                                                                   <th>Date</th>
                                                             </tr>
@@ -415,7 +406,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
 
       </main>
 
-      <?php foreach ($orders as $order): ?>
+      <?php foreach ($ordersForModals as $order): ?>
             <?php $modalId = 'orderModal' . (int)$order['order_id']; ?>
             <div class="modal fade" id="<?= $modalId ?>" tabindex="-1" aria-labelledby="<?= $modalId ?>Label" aria-hidden="true">
                   <div class="modal-dialog modal-dialog-centered admin-order-modal">
@@ -437,15 +428,21 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                           </div>
 
                                           <div class="row g-2">
-                                                <div class="col-12 col-md-6">
+                                                <div class="col-12 col-md-4">
                                                       <div class="mb-2">
                                                             <label for="modalQuantity<?= $order['order_id'] ?>" class="form-label mb-1 small fw-bold">Quantité</label>
                                                             <input type="number" class="form-control form-control-sm" id="modalQuantity<?= $order['order_id'] ?>" name="quantity" value="<?= (int)$order['quantity'] ?>" min="1" required>
                                                       </div>
                                                 </div>
-                                                <div class="col-12 col-md-6">
+                                                <div class="col-12 col-md-4">
                                                       <div class="mb-2">
-                                                            <label for="modalTotal<?= $order['order_id'] ?>" class="form-label mb-1 small fw-bold">Prix (FCFA)</label>
+                                                            <label class="form-label mb-1 small fw-bold">Prix unitaire (FCFA)</label>
+                                                            <input type="text" class="form-control form-control-sm" value="<?= number_format($order['unit_price'] ?? 0, 0, ',', ' ') ?>" readonly>
+                                                      </div>
+                                                </div>
+                                                <div class="col-12 col-md-4">
+                                                      <div class="mb-2">
+                                                            <label for="modalTotal<?= $order['order_id'] ?>" class="form-label mb-1 small fw-bold">Prix total (FCFA)</label>
                                                             <input type="number" class="form-control form-control-sm" id="modalTotal<?= $order['order_id'] ?>" name="total_price" value="<?= (int)$order['total_price'] ?>" min="0" required>
                                                       </div>
                                                 </div>
@@ -526,7 +523,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
       <?php endforeach; ?>
 
       <!-- Modal pour les frais de livraison -->
-      <?php foreach ($orders as $order): ?>
+      <?php foreach ($ordersForModals as $order): ?>
             <div class="modal fade" id="deliveryFeeModal<?= $order['order_id'] ?>" tabindex="-1" aria-labelledby="deliveryFeeModalLabel<?= $order['order_id'] ?>" aria-hidden="true">
                   <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content">
@@ -572,7 +569,6 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
       <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
       <script src="../../assets/js/bootstrap.bundle.min.js"></script>
       <script src="../../assets/js/ordering-alert.js"></script>
-      <script src="../../assets/js/filter-orders.js"></script>
 
       <script>
             let currentDeliveryContext = null;

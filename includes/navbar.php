@@ -2,14 +2,15 @@
 <?php
     $currentPath = $_SERVER['PHP_SELF'] ?? '';
     $userName = $_SESSION['user_name'] ?? 'Utilisateur';
-    $roleLabel = (isset($_SESSION['role']) && (int)$_SESSION['role'] === 1) ? 'Admin' : 'Manager';
+    $isAdmin = isset($_SESSION['role']) && (int)$_SESSION['role'] === 1;
+    $roleLabel = $isAdmin ? 'Admin' : 'Manager';
 ?>
 
 <nav class="navbar navbar-expand-lg admin-navbar primary-bg paper-color">
     <div class="container-fluid">
 
         <!-- Brand -->
-        <a class="navbar-brand admin-brand" href="/management/dashboard.php">
+        <a class="navbar-brand admin-brand" href="<?php echo $isAdmin ? '/management/dashboard.php' : '/management/orders/index.php'; ?>">
             <span class="brand-icon">
                 <i class='bx bx-store-alt'></i>
             </span>
@@ -25,6 +26,7 @@
         <!-- Menu -->
         <div class="collapse navbar-collapse" id="adminNavbar">
             <ul class="navbar-nav admin-nav mx-auto">
+                <?php if ($isAdmin): ?>
                 <li class="nav-item">
                     <a class="nav-link <?php echo (strpos($currentPath, 'dashboard.php') !== false) ? 'active' : ''; ?>" href="/management/dashboard.php">
                         <i class='bx bx-grid-alt'></i>
@@ -37,12 +39,14 @@
                         <span>Produits</span>
                     </a>
                 </li>
+                <?php endif; ?>
                 <li class="nav-item">
                     <a class="nav-link <?php echo (strpos($currentPath, '/orders/') !== false) ? 'active' : ''; ?>" href="/management/orders/index.php">
                         <i class='bx bx-cart'></i>
                         <span>Commandes</span>
                     </a>
                 </li>
+                <?php if ($isAdmin): ?>
                 <li class="nav-item">
                     <a class="nav-link <?php echo (strpos($currentPath, '/users/') !== false) ? 'active' : ''; ?>" href="/management/users/index.php">
                         <i class='bx bx-user'></i>
@@ -55,6 +59,7 @@
                         <span>Gestion</span>
                     </a>
                 </li>
+                <?php endif; ?>
             </ul>
 
             <!-- Actions utilisateur -->

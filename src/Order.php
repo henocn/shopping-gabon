@@ -3,7 +3,6 @@
 namespace src;
 
 use PDO;
-use PDOException;
 
 class Order
 {
@@ -172,6 +171,117 @@ class Order
 
         $req = $this->bd->prepare($sql);
         $req->execute(['manager_id' => $userId]);
+        return $req->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getOrdersByStatuses(array $statuses)
+    {
+        if (empty($statuses)) {
+            return [];
+        }
+
+        $placeholders = [];
+        $params = [];
+        foreach (array_values($statuses) as $index => $status) {
+            $key = 'status_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $status;
+        }
+
+        $sql = "
+        SELECT
+            o.id AS order_id,
+            o.product_id,
+            o.pack_id,
+            o.quantity,
+            o.purchase_price,
+            o.total_price,
+            o.client_name,
+            o.client_country,
+            o.client_phone,
+            o.client_adress,
+            o.client_note,
+            o.manager_note,
+            o.manager_id,
+            o.newstat,
+            o.created_at,
+            o.updated_at,
+            COALESCE(pc.selling_price, 0) AS unit_price,
+            COALESCE(p.name, 'Produit supprimé') AS product_name,
+            COALESCE(pp.name, '') AS pack_name,
+            COALESCE(u.name, '—') AS assistant_name,
+            uc.name AS assistant_country_name,
+            uc.code AS assistant_country_code
+        FROM orders o
+        LEFT JOIN products p ON p.id = o.product_id
+        LEFT JOIN users u ON u.id = o.manager_id
+        LEFT JOIN countries uc ON (u.country = uc.code OR u.country = CAST(uc.id AS CHAR))
+        LEFT JOIN product_countries pc
+            ON pc.product_id = p.id
+           AND pc.country_id = o.client_country
+        LEFT JOIN product_packs pp ON pp.id = o.pack_id
+        WHERE o.newstat IN (" . implode(',', $placeholders) . ")
+        ORDER BY o.id DESC
+    ";
+
+        $req = $this->bd->prepare($sql);
+        $req->execute($params);
+        return $req->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getOrdersByStatusesAndUserId(array $statuses, int $userId)
+    {
+        if (empty($statuses)) {
+            return [];
+        }
+
+        $placeholders = [];
+        $params = ['manager_id' => $userId];
+        foreach (array_values($statuses) as $index => $status) {
+            $key = 'status_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $status;
+        }
+
+        $sql = "
+        SELECT
+            o.id AS order_id,
+            o.product_id,
+            o.pack_id,
+            o.quantity,
+            o.purchase_price,
+            o.total_price,
+            o.client_name,
+            o.client_country,
+            o.client_phone,
+            o.client_adress,
+            o.client_note,
+            o.manager_note,
+            o.manager_id,
+            o.newstat,
+            o.created_at,
+            o.updated_at,
+            COALESCE(pc.selling_price, 0) AS unit_price,
+            COALESCE(p.name, 'Produit supprimé') AS product_name,
+            COALESCE(pp.name, '') AS pack_name,
+            COALESCE(u.name, '—') AS assistant_name,
+            uc.name AS assistant_country_name,
+            uc.code AS assistant_country_code
+        FROM orders o
+        LEFT JOIN products p ON p.id = o.product_id
+        LEFT JOIN users u ON u.id = o.manager_id
+        LEFT JOIN countries uc ON (u.country = uc.code OR u.country = CAST(uc.id AS CHAR))
+        LEFT JOIN product_countries pc
+            ON pc.product_id = p.id
+           AND pc.country_id = o.client_country
+        LEFT JOIN product_packs pp ON pp.id = o.pack_id
+        WHERE o.newstat IN (" . implode(',', $placeholders) . ")
+          AND o.manager_id = :manager_id
+        ORDER BY o.id DESC
+    ";
+
+        $req = $this->bd->prepare($sql);
+        $req->execute($params);
         return $req->fetchAll(PDO::FETCH_ASSOC);
     }
 

@@ -1,3 +1,7 @@
+<?php
+  $isAdmin = isset($_SESSION['role']) && (int)$_SESSION['role'] === 1;
+?>
+
 <footer class="footer mt-auto pt-4 pb-0 primary-bg paper-color">
   <div class="container">
     <div class="row">
@@ -15,10 +19,14 @@
       <div class="col-md-4 mb-4">
         <h6 class="fw-bold mb-3 primary-color">Navigation</h6>
         <ul class="list-unstyled">
-          <li><a href="index.php" class="text-decoration-none" style="color: var(--neutral-light);"><i class='bx bx-home'></i> Home</a></li>
-          <li><a href="products/" class="text-decoration-none" style="color: var(--neutral-light);"><i class='bx bx-box'></i> Products</a></li>
-          <li><a href="orders/" class="text-decoration-none" style="color: var(--neutral-light);"><i class='bx bx-cart'></i> Orders</a></li>
-          <li><a href="users/" class="text-decoration-none" style="color: var(--neutral-light);"><i class='bx bx-user'></i> Users</a></li>
+          <?php if ($isAdmin): ?>
+          <li><a href="/management/dashboard.php" class="text-decoration-none" style="color: var(--neutral-light);"><i class='bx bx-home'></i> Accueil</a></li>
+          <li><a href="/management/products/index.php" class="text-decoration-none" style="color: var(--neutral-light);"><i class='bx bx-box'></i> Produits</a></li>
+          <li><a href="/management/orders/index.php" class="text-decoration-none" style="color: var(--neutral-light);"><i class='bx bx-cart'></i> Commandes</a></li>
+          <li><a href="/management/users/index.php" class="text-decoration-none" style="color: var(--neutral-light);"><i class='bx bx-user'></i> Utilisateurs</a></li>
+          <?php else: ?>
+          <li><a href="/management/orders/index.php" class="text-decoration-none" style="color: var(--neutral-light);"><i class='bx bx-cart'></i> Commandes</a></li>
+          <?php endif; ?>
         </ul>
       </div>
 
