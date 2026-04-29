@@ -47,21 +47,58 @@ function countryCodeToFlagEntity($code)
     return '&#' . $first . ';&#' . $second . ';';
 }
 
+function countryCurrencyInfo($code, $name = '')
+{
+    $normalizedCode = strtoupper(trim((string) $code));
+    $normalizedName = function_exists('mb_strtolower')
+        ? mb_strtolower(trim((string) $name), 'UTF-8')
+        : strtolower(trim((string) $name));
+
+    if ($normalizedCode === 'GN' || strpos($normalizedName, 'guin') !== false) {
+        return [
+            'code' => 'GNF',
+            'label' => 'GNF',
+        ];
+    }
+
+    return [
+        'code' => 'XOF',
+        'label' => 'FCFA',
+    ];
+}
+
 // Récupérer le prix du pays (à partir de la première association)
 $selectedCountryId = isset($_GET['country']) ? intval($_GET['country']) : null;
 $displayPrice = 0;
+$displayCurrencyInfo = [
+    'code' => 'XOF',
+    'label' => 'FCFA',
+];
 
 if (!empty($productCountries)) {
+    $selectedCountry = null;
     foreach ($productCountries as $ctry) {
         if ($selectedCountryId !== null && (int)$ctry['id'] === $selectedCountryId) {
-            $displayPrice = $ctry['selling_price'];
+            $selectedCountry = $ctry;
             break;
         }
     }
-    if ($displayPrice === 0) {
-        $displayPrice = $productCountries[0]['selling_price'];
-        $selectedCountryId = (int)$productCountries[0]['id'];
+    if (!$selectedCountry) {
+        foreach ($productCountries as $ctry) {
+            $currencyInfo = countryCurrencyInfo($ctry['code'] ?? '', $ctry['name'] ?? '');
+            if (($currencyInfo['code'] ?? '') !== 'GNF') {
+                $selectedCountry = $ctry;
+                break;
+            }
+        }
+        if (!$selectedCountry) {
+            $selectedCountry = $productCountries[0];
+        }
     }
+
+    $displayPrice = (int)($selectedCountry['selling_price'] ?? 0);
+    $selectedCountryId = (int)($selectedCountry['id'] ?? 0);
+    $displayCurrencyInfo = countryCurrencyInfo($selectedCountry['code'] ?? '', $selectedCountry['name'] ?? '');
 }
 
 $displayTitle = $product['name'];
@@ -124,7 +161,7 @@ $displayDescription = $product['description'];
                             <span class="store-price-label">Prix pour votre pays</span>
                             <p class="store-price">
                                 <span id="display-price" data-price="<?= (int)$displayPrice ?>"><?= number_format($displayPrice, 0, ',', ' '); ?></span>
-                                <span class="store-currency">FCFA</span>
+                                <span class="store-currency" data-currency-code="<?= htmlspecialchars($displayCurrencyInfo['code'], ENT_QUOTES); ?>"><?= htmlspecialchars($displayCurrencyInfo['label']); ?></span>
                             </p>
                         </div>
                         <p class="store-form-title">Vos coordonnées</p>
@@ -141,8 +178,9 @@ $displayDescription = $product['description'];
                                             <?php
                                             $flag = countryCodeToFlagEntity($ctry['code'] ?? '');
                                             $isSelected = ($selectedCountryId !== null && (int)$ctry['id'] === $selectedCountryId);
+                                            $currencyInfo = countryCurrencyInfo($ctry['code'] ?? '', $ctry['name'] ?? '');
                                             ?>
-                                            <option value="<?= (int)$ctry['id']; ?>" data-price="<?= (int)($ctry['selling_price'] ?? 0); ?>" <?= $isSelected ? 'selected' : ''; ?>>
+                                            <option value="<?= (int)$ctry['id']; ?>" data-price="<?= (int)($ctry['selling_price'] ?? 0); ?>" data-country-code="<?= htmlspecialchars(strtoupper(trim($ctry['code'] ?? '')), ENT_QUOTES); ?>" data-country-name="<?= htmlspecialchars($ctry['name'] ?? '', ENT_QUOTES); ?>" data-currency-code="<?= htmlspecialchars($currencyInfo['code'], ENT_QUOTES); ?>" data-currency-label="<?= htmlspecialchars($currencyInfo['label'], ENT_QUOTES); ?>" <?= $isSelected ? 'selected' : ''; ?>>
                                                 <?= $flag ? $flag . ' ' : '' ?><?= htmlspecialchars($ctry['phone_code'] ?? ''); ?>
                                             </option>
                                         <?php endforeach; ?>
@@ -449,6 +487,32 @@ $displayDescription = $product['description'];
     </script>
 
     <script>
+        function getCurrentCurrencyInfo() {
+            var countrySelect = document.getElementById('client_country_select');
+            var fallback = {
+                code: 'XOF',
+                label: 'FCFA'
+            };
+
+            if (!countrySelect || !countrySelect.options || countrySelect.selectedIndex < 0) {
+                return fallback;
+            }
+
+            var opt = countrySelect.options[countrySelect.selectedIndex];
+            if (!opt) {
+                return fallback;
+            }
+
+            return {
+                code: opt.getAttribute('data-currency-code') || fallback.code,
+                label: opt.getAttribute('data-currency-label') || fallback.label
+            };
+        }
+
+        function getCurrentCurrencyCode() {
+            return getCurrentCurrencyInfo().code;
+        }
+
         function trackWhenReady(eventName, eventData, attempts) {
             var defaultAttemptsByEvent = {
                 Purchase: 40,
@@ -480,9 +544,16 @@ $displayDescription = $product['description'];
         document.addEventListener('DOMContentLoaded', function() {
             var countrySelect = document.getElementById('client_country_select');
             var displayPriceEl = document.getElementById('display-price');
+            var displayCurrencyEl = document.querySelector('.store-currency');
             if (countrySelect && displayPriceEl) {
                 function formatPrice(n) {
                     return Number(n).toLocaleString('fr-FR', { maximumFractionDigits: 0 });
+                }
+                function updateCurrencyFromCountry() {
+                    if (!displayCurrencyEl) return;
+                    var currencyInfo = getCurrentCurrencyInfo();
+                    displayCurrencyEl.textContent = currencyInfo.label;
+                    displayCurrencyEl.setAttribute('data-currency-code', currencyInfo.code);
                 }
                 function updatePriceFromCountry() {
                     var opt = countrySelect.options[countrySelect.selectedIndex];
@@ -490,6 +561,7 @@ $displayDescription = $product['description'];
                     var price = parseInt(opt.getAttribute('data-price'), 10) || 0;
                     displayPriceEl.textContent = formatPrice(price);
                     displayPriceEl.setAttribute('data-price', price);
+                    updateCurrencyFromCountry();
                     var baseUrl = window.location.pathname + '?id=<?= (int)$product["id"] ?>';
                     var countryId = opt.value;
                     var newUrl = baseUrl + (countryId ? '&country=' + encodeURIComponent(countryId) : '');
@@ -497,6 +569,7 @@ $displayDescription = $product['description'];
                         window.history.replaceState(null, '', newUrl);
                     }
                 }
+                updateCurrencyFromCountry();
                 countrySelect.addEventListener('change', updatePriceFromCountry);
             }
 
@@ -505,7 +578,7 @@ $displayDescription = $product['description'];
                     content_ids: ['<?= $product['id']; ?>'],
                     content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
                     value: <?= $displayPrice; ?>,
-                    currency: 'XOF'
+                    currency: getCurrentCurrencyCode()
                 });
             }, 5000);
 
@@ -533,7 +606,7 @@ $displayDescription = $product['description'];
                     content_ids: ['<?= $product['id']; ?>'],
                     content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
                     value: <?= $displayPrice; ?>,
-                    currency: 'XOF',
+                    currency: getCurrentCurrencyCode(),
                     time_spent: timeSpent,
                     abandonment_point: abandonmentPoint
                 });
@@ -554,7 +627,7 @@ $displayDescription = $product['description'];
                                 content_ids: ['<?= $product['id']; ?>'],
                                 content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
                                 value: <?= $displayPrice; ?>,
-                                currency: 'XOF'
+                                currency: getCurrentCurrencyCode()
                             });
 
                             abandonTimer = setTimeout(function() {
@@ -563,7 +636,7 @@ $displayDescription = $product['description'];
                                         content_ids: ['<?= $product['id']; ?>'],
                                         content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
                                         value: <?= $displayPrice; ?>,
-                                        currency: 'XOF',
+                                        currency: getCurrentCurrencyCode(),
                                         time_spent: Math.round((Date.now() - formStartTime) / 1000)
                                     });
                                 }
@@ -582,7 +655,7 @@ $displayDescription = $product['description'];
                                         content_ids: ['<?= $product['id']; ?>'],
                                         content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
                                         value: <?= $displayPrice; ?>,
-                                        currency: 'XOF',
+                                        currency: getCurrentCurrencyCode(),
                                         progress: 25
                                     });
                                 } else if (progressPercent === 50) {
@@ -590,7 +663,7 @@ $displayDescription = $product['description'];
                                         content_ids: ['<?= $product['id']; ?>'],
                                         content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
                                         value: <?= $displayPrice; ?>,
-                                        currency: 'XOF',
+                                        currency: getCurrentCurrencyCode(),
                                         progress: 50
                                     });
                                 } else if (progressPercent === 75) {
@@ -598,7 +671,7 @@ $displayDescription = $product['description'];
                                         content_ids: ['<?= $product['id']; ?>'],
                                         content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
                                         value: <?= $displayPrice; ?>,
-                                        currency: 'XOF',
+                                        currency: getCurrentCurrencyCode(),
                                         progress: 75
                                     });
                                 } else if (progressPercent === 100) {
@@ -606,7 +679,7 @@ $displayDescription = $product['description'];
                                         content_ids: ['<?= $product['id']; ?>'],
                                         content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
                                         value: <?= $displayPrice; ?>,
-                                        currency: 'XOF',
+                                        currency: getCurrentCurrencyCode(),
                                         progress: 100
                                     });
                                 }
@@ -621,7 +694,7 @@ $displayDescription = $product['description'];
                                         content_ids: ['<?= $product['id']; ?>'],
                                         content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
                                         value: <?= $displayPrice; ?>,
-                                        currency: 'XOF',
+                                        currency: getCurrentCurrencyCode(),
                                         time_spent: Math.round((Date.now() - formStartTime) / 1000)
                                     });
                                 }
@@ -634,7 +707,7 @@ $displayDescription = $product['description'];
                             content_ids: ['<?= $product['id']; ?>'],
                             content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
                             value: <?= $displayPrice; ?>,
-                            currency: 'XOF',
+                            currency: getCurrentCurrencyCode(),
                             field_name: this.name || this.id || 'unknown',
                             field_index: index
                         });
@@ -689,7 +762,7 @@ $displayDescription = $product['description'];
                     var packSelect = document.getElementById('packSelection');
                     var selectedPackId = packIdInput ? (packIdInput.value || '') : '';
                     var purchasePayload = {
-                        currency: 'XOF'
+                        currency: getCurrentCurrencyCode()
                     };
 
                     if (selectedPackId && packSelect) {
@@ -770,7 +843,7 @@ $displayDescription = $product['description'];
                     'quantity': 1,
                     'item_price': currentPrice
                 }],
-                currency: 'XOF',
+                currency: getCurrentCurrencyCode(),
                 num_items: 1,
                 value: currentPrice
             });

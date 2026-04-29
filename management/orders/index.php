@@ -687,7 +687,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
 
             function formatPriceFcfa(value) {
                   const amount = Number(value || 0);
-                  return amount.toLocaleString('fr-FR') + ' F';
+                  return amount.toLocaleString('fr-FR') + ' FCFA';
             }
 
             function formatDateTime(value) {

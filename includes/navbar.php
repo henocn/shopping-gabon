@@ -14,7 +14,7 @@
             <span class="brand-icon">
                 <i class='bx bx-store-alt'></i>
             </span>
-            <span class="brand-title">ZAfrica</span>
+            <span class="brand-title">LUXEMARKET</span>
         </a>
 
         <!-- Toggler -->
@@ -77,10 +77,12 @@
                             <div class="admin-user-role"><?php echo $roleLabel; ?></div>
                         </div>
                         <div class="dropdown-divider"></div>
+                        <?php if ($isAdmin): ?>
                         <a class="dropdown-item admin-user-item" href="/management/users/change-pass.php">
                             <i class='bx bx-lock-alt'></i>
                             <span>Changer le mot de passe</span>
                         </a>
+                        <?php endif; ?>
                         <a class="dropdown-item admin-user-item" href="/management/users/logout.php">
                             <i class='bx bx-log-out-circle'></i>
                             <span>Déconnexion</span>

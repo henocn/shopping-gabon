@@ -101,12 +101,12 @@ switch ($action) {
 
             // Création du produit principal
             $productData = [
-                'name' => htmlspecialchars($_POST['name']),
+                'name' => trim((string)($_POST['name'] ?? '')),
                 'purchase_price' => floatval($_POST['purchase_price']),
                 'shipping_price' => floatval($_POST['shipping_price']),
                 'quantity' => intval($_POST['quantity']),
                 'image' => $mainImageName,
-                'description' => $_POST['description'],
+                'description' => (string)($_POST['description'] ?? ''),
                 'carousel1' => $carouselImages[0],
                 'carousel2' => $carouselImages[1],
                 'carousel3' => $carouselImages[2],
@@ -156,9 +156,9 @@ switch ($action) {
 
                             $characteristicData = [
                                 'product_id' => $productId,
-                                'title' => htmlspecialchars($title),
+                                'title' => trim((string)$title),
                                 'image' => $characteristicImage,
-                                'description' => htmlspecialchars($_POST['characteristic_description'][$key] ?? '')
+                                'description' => trim((string)($_POST['characteristic_description'][$key] ?? ''))
                             ];
 
                             $manager->createCaracteristics($characteristicData);
@@ -175,7 +175,7 @@ switch ($action) {
                                 $videoData = [
                                     'product_id' => $productId,
                                     'video_url' => $videoName,
-                                    'texte' => htmlspecialchars($_POST['video_text'][$key] ?? '')
+                                    'texte' => trim((string)($_POST['video_text'][$key] ?? ''))
                                 ];
 
                                 $manager->createVideos($videoData);
@@ -206,7 +206,7 @@ switch ($action) {
 
                             $packData = [
                                 'product_id'       => $productId,
-                                'pack_name'             => htmlspecialchars($name ?? ''),
+                                'pack_name'             => trim((string)($name ?? '')),
                                 'pack_image'            => $image,
                                 'pack_quantity'         => (int)($_POST['pack_quantity'][$key] ?? 0),
                                 'pack_price'            => (int)($_POST['pack_price'][$key] ?? 0),
@@ -332,12 +332,12 @@ switch ($action) {
 
                 // Mise à jour du produit principal
                 $productData = [
-                    'name' => htmlspecialchars($_POST['name']),
+                    'name' => trim((string)($_POST['name'] ?? '')),
                     'purchase_price' => floatval($_POST['purchase_price']),
                     'shipping_price' => floatval($_POST['shipping_price']),
                     'quantity' => intval($_POST['quantity']),
                     'image' => $mainImageName,
-                    'description' => $_POST['description'],
+                    'description' => (string)($_POST['description'] ?? ''),
                     'carousel1' => $carouselImages[0],
                     'carousel2' => $carouselImages[1],
                     'carousel3' => $carouselImages[2],
@@ -449,9 +449,9 @@ switch ($action) {
 
                         // Mettre à jour la caractéristique
                         $characteristicData = [
-                            'title' => htmlspecialchars($_POST['existing_char_title'][$index]),
+                            'title' => trim((string)($_POST['existing_char_title'][$index] ?? '')),
                             'image' => $charImage,
-                            'description' => htmlspecialchars($_POST['existing_char_description'][$index] ?? '')
+                            'description' => trim((string)($_POST['existing_char_description'][$index] ?? ''))
                         ];
 
                         $manager->updateCaracteristic($charId, $characteristicData);
@@ -477,9 +477,9 @@ switch ($action) {
 
                             $characteristicData = [
                                 'product_id' => $productId,
-                                'title' => htmlspecialchars($title),
+                                'title' => trim((string)$title),
                                 'image' => $characteristicImage,
-                                'description' => htmlspecialchars($_POST['characteristic_description'][$key] ?? '')
+                                'description' => trim((string)($_POST['characteristic_description'][$key] ?? ''))
                             ];
 
                             $manager->createCaracteristics($characteristicData);
@@ -540,7 +540,7 @@ switch ($action) {
                         // Mettre à jour la vidéo
                         $videoData = [
                             'video_url' => $videoUrl,
-                            'texte' => htmlspecialchars($_POST['existing_video_text'][$index] ?? '')
+                            'texte' => trim((string)($_POST['existing_video_text'][$index] ?? ''))
                         ];
 
                         $manager->updateVideo($videoId, $videoData);
@@ -556,7 +556,7 @@ switch ($action) {
                                 $videoData = [
                                     'product_id' => $productId,
                                     'video_url' => $videoName,
-                                    'texte' => htmlspecialchars($_POST['new_video_text'][$key] ?? '')
+                                    'texte' => trim((string)($_POST['new_video_text'][$key] ?? ''))
                                 ];
 
                                 $manager->createVideos($videoData);
@@ -573,7 +573,7 @@ switch ($action) {
                                 $videoData = [
                                     'product_id' => $productId,
                                     'video_url' => $videoName,
-                                    'texte' => htmlspecialchars($_POST['video_text'][$key] ?? '')
+                                    'texte' => trim((string)($_POST['video_text'][$key] ?? ''))
                                 ];
                                 $manager->createVideos($videoData);
                             }
@@ -635,7 +635,7 @@ switch ($action) {
 
                         // Mettre à jour le pack
                         $packData = [
-                            'pack_name'           => htmlspecialchars($packName),
+                            'pack_name'           => trim((string)$packName),
                             'pack_image'           => $packImage,
                             'pack_quantity'        => $packQuantity,
                             'pack_price'           => $packPrice,
@@ -664,7 +664,7 @@ switch ($action) {
 
                             $packData = [
                                 'product_id'      => $productId,
-                                'titre'           => htmlspecialchars($titre),
+                                'titre'           => trim((string)$titre),
                                 'image'           => $packImage,
                                 'quantity'        => (int)($_POST['pack_quantity'][$key] ?? 0),
                                 'price_reduction' => (int)($_POST['pack_price_reduction'][$key] ?? 0),
