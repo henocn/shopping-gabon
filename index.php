@@ -48,7 +48,6 @@ function countryCodeToFlagEntity($code)
 }
 
 // Récupérer le prix du pays (à partir de la première association)
-$productCountries = $productManager->getProductCountries($productId);
 $selectedCountryId = isset($_GET['country']) ? intval($_GET['country']) : null;
 $displayPrice = 0;
 
@@ -78,10 +77,10 @@ $displayDescription = $product['description'];
     <meta property="og:title" content="<?= htmlspecialchars($displayTitle); ?>" />
     <meta property="og:description"
         content="<?= htmlspecialchars(substr(strip_tags($displayDescription), 0, 150)); ?>..." />
-    <meta property="og:image" content="https://luxemarket.cloud/uploads/main/<?= $product['image']; ?>" />
-    <meta property="og:url" content="https://luxemarket.cloud/index.php?id=<?= $product['id'] ?>" />
+    <meta property="og:image" content="https://luxemarket.click/uploads/main/<?= $product['image']; ?>" />
+    <meta property="og:url" content="https://luxemarket.click/index.php?id=<?= $product['id'] ?>" />
     <meta property="og:type" content="product" />
-    <meta property="og:site_name" content="luxemarketMarket" />
+    <meta property="og:site_name" content="LUXEMARKET" />
     <meta property="og:locale" content="fr_FR" />
 
     <!-- Twitter Cards -->
@@ -89,8 +88,8 @@ $displayDescription = $product['description'];
     <meta name="twitter:title" content="<?= htmlspecialchars($displayTitle); ?>" />
     <meta name="twitter:description"
         content="<?= htmlspecialchars(substr(strip_tags($displayDescription), 0, 150)); ?>..." />
-    <meta name="twitter:image" content="https://luxemarket.cloud/uploads/main/<?= $product['image']; ?>" />
-    <meta name="twitter:site" content="@luxemarketMarket" />
+    <meta name="twitter:image" content="https://luxemarket.click/uploads/main/<?= $product['image']; ?>" />
+    <meta name="twitter:site" content="@luxemarketclick" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -106,7 +105,7 @@ $displayDescription = $product['description'];
     <header class="store-header">
         <div class="container">
             <a href="/" class="logo" aria-label="Accueil">
-                <img src="assets/images/logo.jpg" alt="TUBKAL MARKET">
+                <img src="assets/images/logo.jpg" alt="LUXEMARKET">
             </a>
             <button type="button" class="btn-order-nav commander-btn" onclick="location.href='#product_details'">
                 <i class='bx bx-cart-alt'></i>
@@ -226,7 +225,7 @@ $displayDescription = $product['description'];
 
     <footer class="store-footer">
         <div class="container">
-            <img src="assets/images/logo.jpg" alt="TUBKAL MARKET">
+            <img src="assets/images/logo.jpg" alt="LUXEMARKET">
             <p><strong>Tous les droits réservés © 2025</strong></p>
         </div>
     </footer>
@@ -660,15 +659,30 @@ $displayDescription = $product['description'];
                 });
 
                 orderForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+
+                    if (formSubmitted) {
+                        return;
+                    }
+
                     if (!orderLimitApi.canSubmit()) {
-                        e.preventDefault();
                         return;
                     }
 
                     orderLimitApi.registerSubmit();
 
                     formSubmitted = true;
-                    e.preventDefault();
+
+                    // Disable the button immediately
+                    const submitBtn = orderForm.querySelector('.btn-submit-order');
+                    if (submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.style.pointerEvents = 'none';
+                        const span = submitBtn.querySelector('span');
+                        if (span) {
+                            span.innerHTML = 'Traitement...';
+                        }
+                    }
 
                     // Déterminer si un pack est sélectionné et calculer dynamiquement la valeur
                     var packIdInput = document.getElementById('selectedPackId');

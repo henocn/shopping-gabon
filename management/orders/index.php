@@ -111,6 +111,31 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   <div class="tab-pane fade show active" id="pane-to-process" role="tabpanel">
                         <div class="row">
                               <div class="col-12">
+                                  
+                                  
+                                  <!-- Champ de recherche/filtrage compact -->
+                                    <div class="card mb-3 search-compact">
+                                          <div class="card-body p-2">
+                                                <div class="row g-2 align-items-end">
+                                                      <div class="col-md-6">
+                                                            <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="🔍 Rechercher par nom, téléphone ou produit...">
+                                                      </div>
+                                                      <div class="col-md-4">
+                                                            <select class="form-select form-select-sm" id="statusFilter">
+                                                                  <option value="all">Tous</option>
+                                                                  <option value="new">Nouvelles</option>
+                                                                  <option value="remind">Rappeler</option>
+                                                            </select>
+                                                      </div>
+                                                      <div class="col-md-2 text-end">
+                                                            <span class="badge bg-secondary" id="order-count"><?= count($groupedOrders['to-process']) ?></span>
+                                                            <small class="text-muted ms-1">résultats</small>
+                                                      </div>
+                                                </div>
+                                          </div>
+                                    </div>
+                                    
+                                    
                                     <?php if (empty($groupedOrders['to-process'])): ?>
                                           <p class="text-muted">Aucune commande à traiter.</p>
                                     <?php else: ?>
@@ -179,7 +204,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                                                       <span>Livrer</span>
                                                                                                 </button>
                                                                                           </form>
-                                                                                          <form method="POST" action="save.php" onsubmit="return confirm('Annuler cette commande ?');">
+                                                                                          <form method="POST" action="save.php" data-confirm="Annuler cette commande ?">
                                                                                                 <input type="hidden" name="order_id" value="<?= $order['order_id'] ?>">
                                                                                                 <input type="hidden" name="quantity" value="<?= $order['quantity'] ?>">
                                                                                                 <input type="hidden" name="total_price" value="<?= $order['total_price'] ?>">
@@ -219,6 +244,18 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   <div class="tab-pane fade" id="pane-unreachable" role="tabpanel">
                         <div class="row">
                               <div class="col-12">
+                                  
+                                  <!-- Champ de recherche -->
+                                    <div class="card mb-3 search-compact">
+                                          <div class="card-body p-2">
+                                                <div class="row g-2 align-items-end">
+                                                      <div class="col-md-12">
+                                                            <input type="text" class="form-control form-control-sm" id="searchInputUnreachable" placeholder="🔍 Rechercher par nom, téléphone ou produit...">
+                                                      </div>
+                                                </div>
+                                          </div>
+                                    </div>
+                                    
                                     <?php if (empty($groupedOrders['unreachable'])): ?>
                                           <p class="text-muted">Aucune commande injoignable.</p>
                                     <?php else: ?>
@@ -280,6 +317,18 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   <div class="tab-pane fade" id="pane-processing" role="tabpanel">
                         <div class="row">
                               <div class="col-12">
+                                  
+                                  <!-- Champ de recherche -->
+                                    <div class="card mb-3 search-compact">
+                                          <div class="card-body p-2">
+                                                <div class="row g-2 align-items-end">
+                                                      <div class="col-md-12">
+                                                            <input type="text" class="form-control form-control-sm" id="searchInputProcessing" placeholder="🔍 Rechercher par nom, téléphone ou produit...">
+                                                      </div>
+                                                </div>
+                                          </div>
+                                    </div>
+                                    
                                     <?php if (empty($groupedOrders['processing'])): ?>
                                           <p class="text-muted">Aucune commande programmée.</p>
                                     <?php else: ?>
@@ -335,7 +384,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                                                 <span>Livrer</span>
                                                                                           </button>
                                                                                     </form>
-                                                                                    <form method="POST" action="save.php" onsubmit="return confirm('Annuler cette commande ?');">
+                                                                                    <form method="POST" action="save.php" data-confirm="Annuler cette commande ?">
                                                                                           <input type="hidden" name="order_id" value="<?= $order['order_id'] ?>">
                                                                                           <input type="hidden" name="quantity" value="<?= $order['quantity'] ?>">
                                                                                           <input type="hidden" name="total_price" value="<?= $order['total_price'] ?>">
@@ -365,6 +414,18 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   <div class="tab-pane fade" id="pane-delivered" role="tabpanel">
                         <div class="row">
                               <div class="col-12">
+                                  
+                                  <!-- Champ de recherche -->
+                                    <div class="card mb-3 search-compact">
+                                          <div class="card-body p-2">
+                                                <div class="row g-2 align-items-end">
+                                                      <div class="col-md-12">
+                                                            <input type="text" class="form-control form-control-sm" id="searchInputDelivered" placeholder="🔍 Rechercher par nom, téléphone ou produit...">
+                                                      </div>
+                                                </div>
+                                          </div>
+                                    </div>
+                                    
                                     <?php if (empty($groupedOrders['delivered'])): ?>
                                           <p class="text-muted">Aucune commande livrée aujourd'hui.</p>
                                     <?php else: ?>
@@ -406,6 +467,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
 
       </main>
 
+      <div id="modals-container">
       <?php foreach ($ordersForModals as $order): ?>
             <?php $modalId = 'orderModal' . (int)$order['order_id']; ?>
             <div class="modal fade" id="<?= $modalId ?>" tabindex="-1" aria-labelledby="<?= $modalId ?>Label" aria-hidden="true">
@@ -563,17 +625,127 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   </div>
             </div>
       <?php endforeach; ?>
+      </div>
 
       <?php include '../../includes/footer.php'; ?>
 
       <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
       <script src="../../assets/js/bootstrap.bundle.min.js"></script>
       <script src="../../assets/js/ordering-alert.js"></script>
-
+      <script src="../../assets/js/filter-orders.js"></script>
+      <script src="../../assets/js/reload.js"></script>
+        
       <script>
             let currentDeliveryContext = null;
             let deliveryModalConfirming = false;
             let lastOrderId = 0;
+            let isNotificationRequestInFlight = false;
+            let isReloadScheduled = false;
+            let lastUserInteractionAt = Date.now();
+            let isPushRegistering = false;
+
+            const POLLING_INTERVAL_MS = 15000;
+            const RELOAD_GRACE_PERIOD_MS = 1500;
+            const RELOAD_RETRY_WHEN_BUSY_MS = 5000;
+            const PUSH_SETUP_DELAY_MS = 5000;
+            const PUSH_FETCH_TIMEOUT_MS = 8000;
+
+            // Fonction AJAX centralisée
+            function submitFormAsync(formElement, orderId) {
+                  if (!formElement) return;
+
+                  const $form = $(formElement);
+
+                  // Vérifier si une action a bien été choisie (modal)
+                  const $actionSelect = $form.find('select[name="newstat"]');
+                  if ($actionSelect.length && $actionSelect.val() === '') {
+                        alert('Veuillez choisir une action avant de continuer.');
+                        return;
+                  }
+
+                  const formData = $form.serialize() + '&is_ajax=1';
+
+                  console.log('[AJAX] Envoi vers:', $form.attr('action'), '| orderId:', orderId, '| données:', formData);
+
+                  const $submitBtn = $form.find('#submitBtn' + orderId);
+                  const originalHtml = $submitBtn.length ? $submitBtn.html() : null;
+                  if ($submitBtn.length) {
+                        $submitBtn.prop('disabled', true).html('<i class="bx bx-loader-alt bx-spin"></i> ...');
+                  }
+
+                  // Fermer la modal principale après avoir gelé le bouton
+                  const mainModalEl = document.getElementById('orderModal' + orderId);
+                  if (mainModalEl) {
+                        const _modal = bootstrap.Modal.getInstance(mainModalEl);
+                        if (_modal) _modal.hide();
+                  }
+
+                  $.ajax({
+                        url: $form.attr('action') || 'save.php',
+                        method: 'POST',
+                        data: formData,
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        dataType: 'json',
+                        success: function(response) {
+                              console.log('[AJAX] Réponse:', response);
+                              if (response && response.success) {
+                                    const $row = $('tr[data-order-id="' + orderId + '"]');
+                                    console.log('[AJAX] Ligne trouvée:', $row.length, 'éléments pour orderId=' + orderId);
+
+                                    // Diminuer le badge de l'onglet source
+                                    const $tabPane = $row.closest('.tab-pane');
+                                    if ($tabPane.length) {
+                                          const paneId = $tabPane.attr('id');
+                                          const tabId = paneId.replace('pane-', 'tab-');
+                                          const $badge = $('button#' + tabId + ' .badge');
+                                          if ($badge.length) {
+                                                const currentCount = parseInt($badge.text(), 10);
+                                                if (currentCount > 0) $badge.text(currentCount - 1);
+                                          }
+                                    }
+
+                                    // fadeOut sur <tr> est bugué en jQuery (display: table-row vs block)
+                                    // On anime les <td> puis on supprime la ligne
+                                    $row.find('td').animate({ opacity: 0 }, 400, function() {
+                                          $row.remove();
+                                    });
+
+                                    if (typeof window.showNotification === 'function') {
+                                          window.showNotification('Commande mise à jour avec succès.', 'success', 4000);
+                                    }
+                              } else {
+                                    alert('Erreur : ' + (response ? (response.error || JSON.stringify(response)) : 'Réponse vide'));
+                              }
+                        },
+                        error: function(xhr, status, err) {
+                              console.error('[AJAX] Erreur:', status, err, xhr.responseText);
+                              alert('Erreur réseau lors de la mise à jour. Réponse: ' + xhr.responseText.substring(0, 200));
+                        },
+                        complete: function() {
+                              if ($submitBtn.length && originalHtml) {
+                                    $submitBtn.prop('disabled', false).html(originalHtml);
+                              }
+                        }
+                  });
+            }
+
+            $(document).ready(function() {
+                  // Intercepter globalement toutes les soumissions de formulaire vers save.php
+                  $(document).on('submit', 'form[action="save.php"]', function(e) {
+                        e.preventDefault();
+                        const $form = $(this);
+                        const orderId = $form.find('input[name="order_id"]').val();
+                        if (!orderId) return;
+
+                        // Gérer la confirmation si demandée (remplace onsubmit="return confirm(...)")
+                        const confirmMsg = $form.data('confirm');
+                        if (confirmMsg) {
+                              if (!window.confirm(confirmMsg)) return;
+                        }
+
+                        submitFormAsync(this, orderId);
+                  });
+            });
 
             // Initialise les interactions sur les commandes (modals et boutons rapides)
             function initOrderInteractions() {
@@ -613,7 +785,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                     }
                               }, 250);
                         } else {
-                              form.submit();
+                              submitFormAsync(form, orderId);
                         }
                   });
             });
@@ -664,7 +836,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                               if (feeField) {
                                     feeField.value = deliveryFee;
                               }
-                              setTimeout(() => quickForm.submit(), 200);
+                              setTimeout(() => submitFormAsync(quickForm, orderId), 200);
                         }
                   } else {
                         const feeField = document.getElementById('deliveryFee' + orderId);
@@ -674,7 +846,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                         setTimeout(() => {
                               const form = document.getElementById('orderForm' + orderId);
                               if (form) {
-                                    form.submit();
+                                    submitFormAsync(form, orderId);
                               }
                         }, 200);
                   }
@@ -713,25 +885,12 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   modalElement.dataset.handlerAttached = '1';
             }
 
-            // Recharge silencieusement les listes de commandes
-            function refreshOrdersSilently() {
-                  $.get(window.location.href, function(html) {
-                        const $html = $(html);
-                        const $newTabs = $html.find('#ordersTabs');
-                        const $newContent = $html.find('#ordersTabsContent');
-
-                        if ($newTabs.length) {
-                              $('#ordersTabs').replaceWith($newTabs);
-                        }
-                        if ($newContent.length) {
-                              $('#ordersTabsContent').replaceWith($newContent);
-                        }
-
-                        initOrderInteractions();
-                  });
+            // Recharge la page proprement
+            function refreshOrdersPage() {
+                  window.location.reload();
             }
 
-            // Récupère l'ID le plus élevé des commandes présentes dans le DOM
+            // Récupère l'ID le plus élevé des commandes  présentes dans le DOM
             function getInitialLastOrderId() {
                   let maxId = 0;
                   document.querySelectorAll('[data-order-id]').forEach(row => {
@@ -753,9 +912,90 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   }
             }
 
-            // Interroge le serveur pour détecter les nouvelles commandes ; une seule notif système par batch
+            function markUserInteraction() {
+                  lastUserInteractionAt = Date.now();
+            }
+
+            function isUserBusyForReload() {
+                  if (document.querySelector('.modal.show')) {
+                        return true;
+                  }
+
+                  const activeEl = document.activeElement;
+                  const isTypingInField = activeEl && (
+                        activeEl.tagName === 'INPUT' ||
+                        activeEl.tagName === 'TEXTAREA' ||
+                        activeEl.tagName === 'SELECT'
+                  );
+
+                  if (isTypingInField && !activeEl.readOnly && !activeEl.disabled) {
+                        return true;
+                  }
+
+                  // Eviter de recharger juste après une interaction utilisateur
+                  return (Date.now() - lastUserInteractionAt) < 2500;
+            }
+
+            function scheduleSmartReload() {
+                  if (isReloadScheduled) {
+                        return;
+                  }
+
+                  isReloadScheduled = true;
+
+                  const tryReload = function() {
+                        if (isUserBusyForReload()) {
+                              setTimeout(tryReload, RELOAD_RETRY_WHEN_BUSY_MS);
+                              return;
+                        }
+
+                        window.location.reload();
+                  };
+
+                  setTimeout(tryReload, RELOAD_GRACE_PERIOD_MS);
+            }
+
+            // Cree une notification system personnalisee avec details de la commande
+            function createDetailedNotification(orderData) {
+                  if (!('Notification' in window) || window.Notification.permission !== 'granted') {
+                        return false;
+                  }
+
+                  var title = '📦 Nouvelle commande #' + orderData.order_id;
+                  var body = orderData.client_name + '\n' + orderData.product_name + '\n' + 
+                        orderData.total_price.toLocaleString('fr-FR') + ' FCFA';
+
+                  try {
+                        new window.Notification(title, {
+                              body: body,
+                              icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%230066cc"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>',
+                              badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><rect width="24" height="24" fill="%230066cc"/><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2z" fill="white"/></svg>',
+                              tag: 'order_' + orderData.order_id,
+                              requireInteraction: false
+                        });
+                        return true;
+                  } catch (e) {
+                        console.warn('Notification failed:', e);
+                        return false;
+                  }
+            }
+
+            // Toast personnalise pour chaque nouvelle commande
+            function showDetailedToast(orderData) {
+                  if (typeof window.showNotification === 'function') {
+                        var priceFormatted = orderData.total_price.toLocaleString('fr-FR');
+                        var msg = '<strong>' + orderData.client_name + '</strong><br>' +
+                              '📦 ' + orderData.product_name + '<br>' +
+                              '💰 ' + priceFormatted + ' FCFA';
+                        window.showNotification(msg, 'success', 8000);
+                  }
+            }
+
+            // Interroge le serveur pour détecter les nouvelles commandes avec détails personnalisés
             function checkNewOrders() {
-                  if (!window.jQuery) return;
+                  if (!window.jQuery || isNotificationRequestInFlight) return;
+
+                  isNotificationRequestInFlight = true;
 
                   $.getJSON('notifications.php', { last_id: lastOrderId })
                         .done(function(data) {
@@ -764,20 +1004,36 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
 
                               if (!data.new_count || data.new_count <= 0) return;
 
-                              var msg = data.new_count === 1
-                                    ? "Une nouvelle commande vient d'être passée."
-                                    : data.new_count + " nouvelles commandes viennent d'être passées.";
                               lastOrderId = data.last_id;
 
-                              if ('Notification' in window && window.Notification.permission === 'granted') {
-                                    try {
-                                          new window.Notification("Nouvelle commande", { body: msg });
-                                    } catch (e) {}
+                              // Traiter chaque nouvelle commande
+                              if (data.orders && Array.isArray(data.orders)) {
+                                    var shouldReload = false;
+                                    data.orders.forEach(function(order) {
+                                          var notified = createDetailedNotification(order);
+                                          if (!notified) {
+                                                showDetailedToast(order);
+                                          }
+                                          shouldReload = true;
+                                    });
+
+                                    // Actualiser une seule fois après toutes les notifications
+                                    if (shouldReload) {
+                                          scheduleSmartReload();
+                                    }
+                              } else {
+                                    // Fallback si pas de details
+                                    var msg = data.new_count === 1
+                                          ? "Une nouvelle commande vient d'être passée."
+                                          : data.new_count + " nouvelles commandes viennent d'être passées.";
+                                    if (typeof window.showNotification === 'function') {
+                                          window.showNotification(msg + ' Actualisation automatique en cours...', 'success', 6000);
+                                    }
+                                    scheduleSmartReload();
                               }
-                              if (typeof window.showNotification === 'function') {
-                                    window.showNotification(msg, 'success');
-                              }
-                              refreshOrdersSilently();
+                        })
+                        .always(function() {
+                              isNotificationRequestInFlight = false;
                         });
             }
 
@@ -791,32 +1047,55 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   return output;
             }
 
+            function createFetchWithTimeout(url, options, timeoutMs) {
+                  return window.Promise.race([
+                        fetch(url, options),
+                        new window.Promise((resolve, reject) =>
+                              setTimeout(() => reject(new Error('Fetch timeout')), timeoutMs)
+                        )
+                  ]);
+            }
+
             function registerPushAndSubscribe(publicKey) {
-                  if (!('serviceWorker' in navigator)) return Promise.reject();
-                  // Utiliser des chemins absolus pour éviter les problèmes de scope selon l'URL
+                  if (!('serviceWorker' in navigator) || isPushRegistering) {
+                        return window.Promise.reject(new Error('Push registration in progress'));
+                  }
+
+                  isPushRegistering = true;
+
                   return navigator.serviceWorker.register('/sw.js', { scope: '/' })
                         .then(function(reg) {
-                              return reg.pushManager.subscribe({
-                                    userVisibleOnly: true,
-                                    applicationServerKey: urlBase64ToUint8Array(publicKey)
+                              return reg.pushManager.getSubscription().then(function(existingSub) {
+                                    if (existingSub) {
+                                          return existingSub;
+                                    }
+
+                                    return reg.pushManager.subscribe({
+                                          userVisibleOnly: true,
+                                          applicationServerKey: urlBase64ToUint8Array(publicKey)
+                                    });
                               });
                         })
                         .then(function(sub) {
                               var payload = sub.toJSON ? sub.toJSON() : { endpoint: sub.endpoint, keys: { p256dh: btoa(String.fromCharCode.apply(null, new window.Uint8Array(sub.getKey('p256dh')))), auth: btoa(String.fromCharCode.apply(null, new window.Uint8Array(sub.getKey('auth')))) } };
-                              return fetch('push-subscribe.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                              return createFetchWithTimeout('push-subscribe.php', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(payload)
+                              }, PUSH_FETCH_TIMEOUT_MS);
+                        })
+                        .then(function() {
+                              isPushRegistering = false;
+                        })
+                        .catch(function(err) {
+                              isPushRegistering = false;
+                              console.warn('Push subscription failed:', err);
+                              return window.Promise.reject(err);
                         });
             }
 
-            document.addEventListener('DOMContentLoaded', function() {
-                  initOrderInteractions();
-                  lastOrderId = getInitialLastOrderId();
-                  ensureNotificationPermission();
-
-                  setInterval(refreshOrdersSilently, 60 * 1000);
-                  setInterval(checkNewOrders, 10 * 1000);
-
-                  // Web Push : afficher le bouton si activé côté serveur et permission non accordée
-                  fetch('push-public-key.php')
+            function setupPushNotifications() {
+                  createFetchWithTimeout('push-public-key.php', { method: 'GET' }, PUSH_FETCH_TIMEOUT_MS)
                         .then(function(r) { return r.json(); })
                         .then(function(data) {
                               if (!data.enabled || !data.publicKey) return;
@@ -842,7 +1121,26 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                     });
                               });
                         })
-                        .catch(function() {});
+                        .catch(function(err) {
+                              console.warn('Push setup failed:', err);
+                        });
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                  initOrderInteractions();
+                  lastOrderId = getInitialLastOrderId();
+                  ensureNotificationPermission();
+
+                  // Suivre l'activité utilisateur pour éviter les rechargements agressifs
+                  ['click', 'keydown', 'input', 'touchstart'].forEach(function(eventName) {
+                        document.addEventListener(eventName, markUserInteraction, { passive: true });
+                  });
+
+                  setTimeout(checkNewOrders, 2500);
+                  setInterval(checkNewOrders, POLLING_INTERVAL_MS);
+
+                  // Web Push : setup en arrière-plan pour ne pas bloquer le chargement
+                  setTimeout(setupPushNotifications, PUSH_SETUP_DELAY_MS);
             });
       </script>
 
