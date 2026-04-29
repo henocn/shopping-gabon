@@ -641,7 +641,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
             let lastOrderId = 0;
             let isNotificationRequestInFlight = false;
             let isReloadScheduled = false;
-            let lastUserInteractionAt = Date.now();
+            let lastUserInteractionAt = window.Date.now();
             let isPushRegistering = false;
 
             const POLLING_INTERVAL_MS = 15000;
@@ -649,6 +649,602 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
             const RELOAD_RETRY_WHEN_BUSY_MS = 5000;
             const PUSH_SETUP_DELAY_MS = 5000;
             const PUSH_FETCH_TIMEOUT_MS = 8000;
+
+            // Empêche les warnings aria-hidden en retirant le focus avant fermeture d'une modal
+            function blurFocusInsideModal(modalElement) {
+                  if (!modalElement) {
+                        return;
+                  }
+
+                  const activeElement = document.activeElement;
+                  if (activeElement && modalElement.contains(activeElement) && typeof activeElement.blur === 'function') {
+                        activeElement.blur();
+                  }
+            }
+
+            function attachModalFocusSafety() {
+                  document.querySelectorAll('.modal').forEach(function(modalElement) {
+                        if (modalElement.dataset.focusSafetyAttached === '1') {
+                              return;
+                        }
+
+                        modalElement.addEventListener('hide.bs.modal', function() {
+                              blurFocusInsideModal(modalElement);
+                        });
+
+                        modalElement.dataset.focusSafetyAttached = '1';
+                  });
+            }
+
+            function escapeHtml(value) {
+                  return String(value || '')
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#039;');
+            }
+
+            function formatPriceFcfa(value) {
+                  const amount = Number(value || 0);
+                  return amount.toLocaleString('fr-FR') + ' F';
+            }
+
+            function formatDateTime(value) {
+                  const date = value ? new Date(String(value).replace(' ', 'T')) : new Date();
+                  if (isNaN(date.getTime())) {
+                        return new Date().toLocaleString('fr-FR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                        }).replace(',', '');
+                  }
+
+                  return date.toLocaleString('fr-FR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                  }).replace(',', '');
+            }
+
+            function getPaneIdByStatus(status) {
+                  switch (status) {
+                        case 'new':
+                        case 'remind':
+                              return 'pane-to-process';
+                        case 'unreachable':
+                              return 'pane-unreachable';
+                        case 'processing':
+                              return 'pane-processing';
+                        case 'deliver':
+                              return 'pane-delivered';
+                        default:
+                              return null;
+                  }
+            }
+
+            function getRowClassByStatus(status) {
+                  switch (status) {
+                        case 'unreachable':
+                              return 'order-row-unreachable';
+                        case 'remind':
+                              return 'order-row-remind';
+                        case 'processing':
+                              return 'order-row-processing';
+                        default:
+                              return 'order-row-default';
+                  }
+            }
+
+            function updateTabBadgeByPane(paneId, delta) {
+                  if (!paneId || !delta) {
+                        return;
+                  }
+
+                  const tabId = paneId.replace('pane-', 'tab-');
+                  const badge = document.querySelector('button#' + tabId + ' .badge');
+                  if (!badge) {
+                        return;
+                  }
+
+                  const current = parseInt(badge.textContent || '0', 10);
+                  const next = Math.max(0, current + delta);
+                  badge.textContent = String(next);
+            }
+
+            function updateToProcessCount() {
+                  const countBadge = document.getElementById('order-count');
+                  if (!countBadge) {
+                        return;
+                  }
+
+                  const rows = document.querySelectorAll('#pane-to-process tbody tr[data-order-id]');
+                  countBadge.textContent = String(rows.length);
+            }
+
+            function buildPaneTableHtml(paneId) {
+                  if (paneId === 'pane-delivered') {
+                        return '' +
+                        '<div class="table-responsive">' +
+                              '<table class="table table-striped table-bordered" id="orders-delivered-table">' +
+                                    '<thead>' +
+                                          '<tr>' +
+                                                '<th>ID</th>' +
+                                                '<th>Client</th>' +
+                                                '<th>Adresse</th>' +
+                                                '<th>Note client</th>' +
+                                                '<th>Produit</th>' +
+                                                '<th>Qt</th>' +
+                                                '<th>Total</th>' +
+                                                '<th>Date</th>' +
+                                          '</tr>' +
+                                    '</thead>' +
+                                    '<tbody></tbody>' +
+                              '</table>' +
+                        '</div>';
+                  }
+
+                  return '' +
+                  '<div class="table-responsive">' +
+                        '<table class="table table-bordered" id="orders-table">' +
+                              '<thead>' +
+                                    '<tr>' +
+                                          '<th scope="col">ID</th>' +
+                                          '<th scope="col">Client</th>' +
+                                          '<th scope="col">Contact</th>' +
+                                          '<th scope="col">Adresse</th>' +
+                                          '<th scope="col">Note client</th>' +
+                                          '<th scope="col">Produit</th>' +
+                                          '<th scope="col">Qt</th>' +
+                                          '<th scope="col">Prix Total</th>' +
+                                          '<th scope="col">Notes</th>' +
+                                          '<th scope="col">Actions</th>' +
+                                          '<th scope="col">Date</th>' +
+                                    '</tr>' +
+                              '</thead>' +
+                              '<tbody></tbody>' +
+                        '</table>' +
+                  '</div>';
+            }
+
+            function ensurePaneTableBody(paneId) {
+                  if (!paneId) {
+                        return null;
+                  }
+
+                  const existingTbody = document.querySelector('#' + paneId + ' table tbody');
+                  if (existingTbody) {
+                        return existingTbody;
+                  }
+
+                  const pane = document.getElementById(paneId);
+                  if (!pane) {
+                        return null;
+                  }
+
+                  const emptyText = pane.querySelector('p.text-muted');
+                  if (emptyText) {
+                        emptyText.remove();
+                  }
+
+                  const host = pane.querySelector('.col-12') || pane;
+                  host.insertAdjacentHTML('beforeend', buildPaneTableHtml(paneId));
+                  return pane.querySelector('table tbody');
+            }
+
+            function getActionOptionsByStatus(status) {
+                  if (status === 'processing') {
+                        return [
+                              { value: 'deliver', label: 'Livre' },
+                              { value: 'canceled', label: 'Annuler' }
+                        ];
+                  }
+
+                  if (status === 'new' || status === 'unreachable' || status === 'remind') {
+                        return [
+                              { value: 'deliver', label: 'Livrer' },
+                              { value: 'processing', label: 'Programmer' },
+                              { value: 'remind', label: 'Rappeler' },
+                              { value: 'unreachable', label: 'Injoignable' },
+                              { value: 'canceled', label: 'Annuler' }
+                        ];
+                  }
+
+                  return [];
+            }
+
+            function buildActionCellHtml(orderId, status, values) {
+                  const quantity = Number(values.quantity || 0);
+                  const totalPrice = Number(values.total_price || 0);
+                  const managerNote = escapeHtml(values.manager_note || '');
+                  const updatedAt = escapeHtml(values.updated_at || '');
+
+                  if (status === 'processing') {
+                        return '' +
+                        '<div class="order-action-group">' +
+                              '<form method="POST" action="save.php" id="quickDeliverForm' + orderId + '">' +
+                                    '<input type="hidden" name="order_id" value="' + orderId + '">' +
+                                    '<input type="hidden" name="quantity" value="' + quantity + '">' +
+                                    '<input type="hidden" name="total_price" value="' + totalPrice + '">' +
+                                    '<input type="hidden" name="newstat" value="deliver">' +
+                                    '<input type="hidden" name="manager_note" value="' + managerNote + '">' +
+                                    '<input type="hidden" name="updated_at" value="' + updatedAt + '">' +
+                                    '<input type="hidden" name="valider" value="update">' +
+                                    '<input type="hidden" name="delivery_fee" value="0">' +
+                                    '<button type="button" class="btn btn-success btn-sm quick-deliver-btn" data-order-id="' + orderId + '" title="Livrer">' +
+                                          '<i class="bx bx-check"></i><span>Livrer</span>' +
+                                    '</button>' +
+                              '</form>' +
+                              '<form method="POST" action="save.php" data-confirm="Annuler cette commande ?">' +
+                                    '<input type="hidden" name="order_id" value="' + orderId + '">' +
+                                    '<input type="hidden" name="quantity" value="' + quantity + '">' +
+                                    '<input type="hidden" name="total_price" value="' + totalPrice + '">' +
+                                    '<input type="hidden" name="newstat" value="canceled">' +
+                                    '<input type="hidden" name="manager_note" value="' + managerNote + '">' +
+                                    '<input type="hidden" name="updated_at" value="' + updatedAt + '">' +
+                                    '<input type="hidden" name="valider" value="update">' +
+                                    '<button type="submit" class="btn btn-danger btn-sm" title="Annuler">' +
+                                          '<i class="bx bx-x"></i><span>Annuler</span>' +
+                                    '</button>' +
+                              '</form>' +
+                        '</div>';
+                  }
+
+                  return '' +
+                  '<button class="btn btn-order-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#orderModal' + orderId + '" title="Traiter" aria-label="Traiter">' +
+                        '<i class="bx bx-edit-alt"></i>' +
+                  '</button>';
+            }
+
+            function updateOrderModalState(orderId, status, values) {
+                  const quantityInput = document.getElementById('modalQuantity' + orderId);
+                  if (quantityInput) {
+                        quantityInput.value = values.quantity || quantityInput.value;
+                  }
+
+                  const totalInput = document.getElementById('modalTotal' + orderId);
+                  if (totalInput) {
+                        totalInput.value = values.total_price || totalInput.value;
+                  }
+
+                  const noteInput = document.getElementById('modalManagerNote' + orderId);
+                  if (noteInput) {
+                        noteInput.value = values.manager_note || '';
+                  }
+
+                  const deliveryFeeInput = document.getElementById('deliveryFee' + orderId);
+                  if (deliveryFeeInput && typeof values.delivery_fee !== 'undefined') {
+                        deliveryFeeInput.value = values.delivery_fee;
+                  }
+
+                  const actionSelect = document.getElementById('actionSelect' + orderId);
+                  if (actionSelect) {
+                        const options = getActionOptionsByStatus(status);
+                        actionSelect.innerHTML = '';
+
+                        const placeholder = document.createElement('option');
+                        placeholder.value = '';
+                        placeholder.selected = true;
+                        placeholder.textContent = '-- Choisir une action --';
+                        actionSelect.appendChild(placeholder);
+
+                        options.forEach(function(option) {
+                              const optionElement = document.createElement('option');
+                              optionElement.value = option.value;
+                              optionElement.textContent = option.label;
+                              actionSelect.appendChild(optionElement);
+                        });
+                  }
+
+                  const statusStrong = document.querySelector('#orderModal' + orderId + ' .form-text strong');
+                  if (statusStrong) {
+                        statusStrong.textContent = status ? (status.charAt(0).toUpperCase() + status.slice(1)) : statusStrong.textContent;
+                  }
+            }
+
+            function collectRowSnapshot(row) {
+                  const cells = row ? row.cells : null;
+                  return {
+                        clientName: cells && cells[1] ? cells[1].textContent.trim() : '',
+                        address: cells && cells[3] ? cells[3].textContent.trim() : '—',
+                        clientNote: cells && cells[4] ? cells[4].textContent.trim() : '—',
+                        productName: cells && cells[5] ? cells[5].textContent.trim() : ''
+                  };
+            }
+
+            function applyOrderUpdateInDom(orderId, newStatus, values) {
+                  const row = document.querySelector('tr[data-order-id="' + orderId + '"]');
+                  if (!row) {
+                        return false;
+                  }
+
+                  const sourcePane = row.closest('.tab-pane');
+                  const sourcePaneId = sourcePane ? sourcePane.id : null;
+                  const targetPaneId = getPaneIdByStatus(newStatus);
+                  const snapshot = collectRowSnapshot(row);
+
+                  if (sourcePaneId) {
+                        updateTabBadgeByPane(sourcePaneId, -1);
+                  }
+
+                  // Statut hors ecran (annule, archive...) => retirer la ligne locale.
+                  if (!targetPaneId) {
+                        row.remove();
+                        updateToProcessCount();
+                        return true;
+                  }
+
+                  if (targetPaneId === 'pane-delivered') {
+                        const deliveredTbody = ensurePaneTableBody('pane-delivered');
+                        if (!deliveredTbody) {
+                              return false;
+                        }
+
+                        const deliveredRow = document.createElement('tr');
+                        deliveredRow.setAttribute('data-order-id', String(orderId));
+                        deliveredRow.innerHTML = '' +
+                              '<td>#' + orderId + '</td>' +
+                              '<td class="client-name-cell" title="' + escapeHtml(snapshot.clientName) + '">' + escapeHtml(snapshot.clientName) + '</td>' +
+                              '<td class="note-cell" title="' + escapeHtml(snapshot.address) + '">' + escapeHtml(snapshot.address || '—') + '</td>' +
+                              '<td class="note-cell" title="' + escapeHtml(snapshot.clientNote) + '">' + escapeHtml(snapshot.clientNote || '—') + '</td>' +
+                              '<td class="product-name-cell" title="' + escapeHtml(snapshot.productName) + '">' + escapeHtml(snapshot.productName) + '</td>' +
+                              '<td>' + Number(values.quantity || 0) + '</td>' +
+                              '<td>' + formatPriceFcfa(values.total_price || 0) + '</td>' +
+                              '<td>' + formatDateTime(values.updated_at) + '</td>';
+
+                        deliveredTbody.prepend(deliveredRow);
+                        row.remove();
+                        updateTabBadgeByPane(targetPaneId, 1);
+                        updateToProcessCount();
+                        return true;
+                  }
+
+                  const targetTbody = ensurePaneTableBody(targetPaneId);
+                  if (!targetTbody) {
+                        return false;
+                  }
+
+                  row.dataset.status = newStatus;
+                  row.classList.remove('order-row-default', 'order-row-unreachable', 'order-row-remind', 'order-row-processing');
+                  row.classList.add('order-row', getRowClassByStatus(newStatus));
+
+                  if (row.cells[6]) {
+                        row.cells[6].textContent = String(Number(values.quantity || 0));
+                  }
+
+                  if (row.cells[7]) {
+                        row.cells[7].textContent = formatPriceFcfa(values.total_price || 0);
+                  }
+
+                  if (row.cells[8]) {
+                        const noteValue = values.manager_note || '';
+                        row.cells[8].textContent = noteValue;
+                        row.cells[8].setAttribute('title', noteValue);
+                  }
+
+                  if (row.cells[9]) {
+                        row.cells[9].innerHTML = buildActionCellHtml(orderId, newStatus, values);
+                  }
+
+                  if (sourcePaneId !== targetPaneId) {
+                        targetTbody.prepend(row);
+                  }
+
+                  updateTabBadgeByPane(targetPaneId, 1);
+                  updateToProcessCount();
+                  updateOrderModalState(orderId, newStatus, values);
+                  initOrderInteractions();
+                  return true;
+            }
+
+            function extractFormValues(formElement) {
+                  const getFieldValue = function(name, fallback) {
+                        const field = formElement.querySelector('[name="' + name + '"]');
+                        return field ? field.value : fallback;
+                  };
+
+                  return {
+                        quantity: getFieldValue('quantity', '0'),
+                        total_price: getFieldValue('total_price', '0'),
+                        manager_note: getFieldValue('manager_note', ''),
+                        updated_at: getFieldValue('updated_at', ''),
+                        delivery_fee: getFieldValue('delivery_fee', '0'),
+                        newstat: getFieldValue('newstat', '')
+                  };
+            }
+
+            function buildActionOptionsHtml(status) {
+                  const options = getActionOptionsByStatus(status);
+                  let html = '<option value="" selected>-- Choisir une action --</option>';
+                  options.forEach(function(option) {
+                        html += '<option value="' + escapeHtml(option.value) + '">' + escapeHtml(option.label) + '</option>';
+                  });
+                  return html;
+            }
+
+            function buildOrderModalHtml(order) {
+                  const orderId = Number(order.order_id || 0);
+                  const status = String(order.newstat || 'new');
+                  const quantity = Number(order.quantity || 1);
+                  const totalPrice = Number(order.total_price || 0);
+                  const unitPrice = Number(order.unit_price || 0);
+                  const managerNote = String(order.manager_note || '');
+                  const clientName = String(order.client_name || 'Client');
+                  const clientPhone = String(order.client_phone || '');
+                  const productName = String(order.product_name || 'Produit');
+                  const updatedAt = String(order.updated_at || new window.Date().toISOString().slice(0, 19).replace('T', ' '));
+
+                  return '' +
+                  '<div class="modal fade" id="orderModal' + orderId + '" tabindex="-1" aria-labelledby="orderModal' + orderId + 'Label" aria-hidden="true">' +
+                        '<div class="modal-dialog modal-dialog-centered admin-order-modal">' +
+                              '<div class="modal-content">' +
+                                    '<div class="modal-header py-2">' +
+                                          '<h6 class="modal-title mb-0" id="orderModal' + orderId + 'Label"><i class="bx bx-edit-alt me-1"></i>Commande #' + orderId + '</h6>' +
+                                          '<button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal" aria-label="Fermer"></button>' +
+                                    '</div>' +
+                                    '<form action="save.php" method="POST" id="orderForm' + orderId + '">' +
+                                          '<div class="modal-body py-2">' +
+                                                '<div class="order-modal-summary">' +
+                                                      '<div class="d-flex flex-column flex-sm-row justify-content-between gap-1">' +
+                                                            '<span><strong>' + escapeHtml(clientName) + '</strong> (' + escapeHtml(clientPhone) + ')</span>' +
+                                                      '</div>' +
+                                                      '<div class="mt-1"><span class="text-muted">Produit : <strong>' + escapeHtml(productName) + '</strong></span></div>' +
+                                                '</div>' +
+                                                '<div class="row g-2">' +
+                                                      '<div class="col-12 col-md-4"><div class="mb-2"><label for="modalQuantity' + orderId + '" class="form-label mb-1 small fw-bold">Quantite</label><input type="number" class="form-control form-control-sm" id="modalQuantity' + orderId + '" name="quantity" value="' + quantity + '" min="1" required></div></div>' +
+                                                      '<div class="col-12 col-md-4"><div class="mb-2"><label class="form-label mb-1 small fw-bold">Prix unitaire (FCFA)</label><input type="text" class="form-control form-control-sm" value="' + escapeHtml(Math.round(unitPrice).toLocaleString('fr-FR')) + '" readonly></div></div>' +
+                                                      '<div class="col-12 col-md-4"><div class="mb-2"><label for="modalTotal' + orderId + '" class="form-label mb-1 small fw-bold">Prix total (FCFA)</label><input type="number" class="form-control form-control-sm" id="modalTotal' + orderId + '" name="total_price" value="' + totalPrice + '" min="0" required></div></div>' +
+                                                      '<div class="col-12"><div class="mb-2"><label for="actionSelect' + orderId + '" class="form-label mb-1 small fw-bold">Action</label><select class="form-select form-select-sm" id="actionSelect' + orderId + '" name="newstat" required>' + buildActionOptionsHtml(status) + '</select><div class="form-text mt-1"><small class="text-muted">Statut: <strong>' + escapeHtml(status.charAt(0).toUpperCase() + status.slice(1)) + '</strong></small></div></div></div>' +
+                                                      '<div class="col-12"><div class="mb-2"><label for="modalManagerNote' + orderId + '" class="form-label mb-1 small fw-bold">Note manager</label><textarea class="form-control form-control-sm" id="modalManagerNote' + orderId + '" name="manager_note" rows="2" placeholder="Notes...">' + escapeHtml(managerNote) + '</textarea></div></div>' +
+                                                '</div>' +
+                                          '</div>' +
+                                          '<div class="modal-footer py-2">' +
+                                                '<input type="hidden" name="order_id" value="' + orderId + '">' +
+                                                '<input type="hidden" name="valider" value="update">' +
+                                                '<input type="hidden" name="updated_at" value="' + escapeHtml(updatedAt) + '">' +
+                                                '<input type="hidden" name="delivery_fee" id="deliveryFee' + orderId + '" value="0">' +
+                                                '<button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><i class="bx bx-x me-1"></i>Annuler</button>' +
+                                                '<button type="button" class="btn btn-primary btn-sm" id="submitBtn' + orderId + '"><i class="bx bx-save me-1"></i>Enregistrer</button>' +
+                                          '</div>' +
+                                    '</form>' +
+                              '</div>' +
+                        '</div>' +
+                  '</div>';
+            }
+
+            function buildDeliveryModalHtml(order) {
+                  const orderId = Number(order.order_id || 0);
+                  const clientName = String(order.client_name || 'Client');
+
+                  return '' +
+                  '<div class="modal fade" id="deliveryFeeModal' + orderId + '" tabindex="-1" aria-labelledby="deliveryFeeModalLabel' + orderId + '" aria-hidden="true">' +
+                        '<div class="modal-dialog modal-dialog-centered">' +
+                              '<div class="modal-content">' +
+                                    '<div class="modal-header bg-success text-white">' +
+                                          '<h5 class="modal-title" id="deliveryFeeModalLabel' + orderId + '"><i class="bx bx-package me-2"></i>Frais de Livraison</h5>' +
+                                          '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>' +
+                                    '</div>' +
+                                    '<div class="modal-body">' +
+                                          '<p class="text-muted mb-3">Commande #' + orderId + ' - ' + escapeHtml(clientName) + '</p>' +
+                                          '<div class="mb-3">' +
+                                                '<label for="deliveryFeeInput' + orderId + '" class="form-label fw-bold">Frais de livraison (FCFA)</label>' +
+                                                '<input type="number" class="form-control form-control-lg" id="deliveryFeeInput' + orderId + '" placeholder="Entrez les frais de livraison" min="0" value="0">' +
+                                                '<div class="form-text"><i class="bx bx-info-circle me-1"></i>Laissez 0 si aucun frais de livraison</div>' +
+                                          '</div>' +
+                                    '</div>' +
+                                    '<div class="modal-footer">' +
+                                          '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bx bx-x me-2"></i>Annuler</button>' +
+                                          '<button type="button" class="btn btn-success" onclick="confirmDelivery(' + orderId + ')"><i class="bx bx-check me-2"></i>Confirmer la livraison</button>' +
+                                    '</div>' +
+                              '</div>' +
+                        '</div>' +
+                  '</div>';
+            }
+
+            function ensureOrderModals(order) {
+                  const orderId = Number(order.order_id || 0);
+                  if (!orderId) {
+                        return;
+                  }
+
+                  const container = document.getElementById('modals-container');
+                  if (!container) {
+                        return;
+                  }
+
+                  if (!document.getElementById('orderModal' + orderId)) {
+                        container.insertAdjacentHTML('beforeend', buildOrderModalHtml(order));
+                  }
+
+                  if (!document.getElementById('deliveryFeeModal' + orderId)) {
+                        container.insertAdjacentHTML('beforeend', buildDeliveryModalHtml(order));
+                  }
+            }
+
+            function addIncomingOrderToDom(order) {
+                  const orderId = Number(order.order_id || 0);
+                  if (!orderId) {
+                        return false;
+                  }
+
+                  if (document.querySelector('tr[data-order-id="' + orderId + '"]')) {
+                        return true;
+                  }
+
+                  const status = String(order.newstat || 'new');
+                  const targetPaneId = getPaneIdByStatus(status);
+                  if (!targetPaneId) {
+                        return true;
+                  }
+
+                  if (targetPaneId === 'pane-delivered') {
+                        const deliveredTbody = ensurePaneTableBody('pane-delivered');
+                        if (!deliveredTbody) {
+                              return false;
+                        }
+
+                        const deliveredRow = document.createElement('tr');
+                        deliveredRow.setAttribute('data-order-id', String(orderId));
+                        deliveredRow.innerHTML = '' +
+                              '<td>#' + orderId + '</td>' +
+                              '<td class="client-name-cell" title="' + escapeHtml(order.client_name || 'Client') + '">' + escapeHtml(order.client_name || 'Client') + '</td>' +
+                              '<td class="note-cell" title="' + escapeHtml(order.client_adress || '—') + '">' + escapeHtml(order.client_adress || '—') + '</td>' +
+                              '<td class="note-cell" title="' + escapeHtml(order.client_note || '—') + '">' + escapeHtml(order.client_note || '—') + '</td>' +
+                              '<td class="product-name-cell" title="' + escapeHtml(order.product_name || 'Produit') + '">' + escapeHtml(order.product_name || 'Produit') + '</td>' +
+                              '<td>' + Number(order.quantity || 1) + '</td>' +
+                              '<td>' + formatPriceFcfa(order.total_price || 0) + '</td>' +
+                              '<td>' + formatDateTime(order.updated_at || order.created_at) + '</td>';
+
+                        deliveredTbody.prepend(deliveredRow);
+                        updateTabBadgeByPane(targetPaneId, 1);
+                        return true;
+                  }
+
+                  const targetTbody = ensurePaneTableBody(targetPaneId);
+                  if (!targetTbody) {
+                        return false;
+                  }
+
+                  const values = {
+                        quantity: String(order.quantity || 1),
+                        total_price: String(order.total_price || 0),
+                        manager_note: String(order.manager_note || ''),
+                        updated_at: String(order.updated_at || order.created_at || ''),
+                        delivery_fee: '0'
+                  };
+
+                  const row = document.createElement('tr');
+                  row.className = 'order-row ' + getRowClassByStatus(status);
+                  row.setAttribute('data-order-id', String(orderId));
+                  row.setAttribute('data-status', status);
+                  row.setAttribute('data-client', String(order.client_name || '').toLowerCase());
+                  row.setAttribute('data-phone', String(order.client_phone || ''));
+                  row.setAttribute('data-product', String(order.product_name || '').toLowerCase());
+
+                  row.innerHTML = '' +
+                        '<td>#' + orderId + '</td>' +
+                        '<td class="client-name-cell" title="' + escapeHtml(order.client_name || 'Client') + '">' + escapeHtml(order.client_name || 'Client') + '</td>' +
+                        '<td>' + escapeHtml(order.client_phone || '') + '</td>' +
+                        '<td class="note-cell" title="' + escapeHtml(order.client_adress || '') + '">' + escapeHtml((order.client_adress && String(order.client_adress).trim() !== '') ? order.client_adress : '—') + '</td>' +
+                        '<td class="note-cell" title="' + escapeHtml(order.client_note || '') + '">' + escapeHtml((order.client_note && String(order.client_note).trim() !== '') ? order.client_note : '—') + '</td>' +
+                        '<td class="product-name-cell" title="' + escapeHtml(order.product_name || 'Produit') + '">' + escapeHtml(order.product_name || 'Produit') + '</td>' +
+                        '<td>' + Number(order.quantity || 1) + '</td>' +
+                        '<td>' + formatPriceFcfa(order.total_price || 0) + '</td>' +
+                        '<td class="note-cell" title="' + escapeHtml(order.manager_note || '') + '">' + escapeHtml(order.manager_note || '') + '</td>' +
+                        '<td>' + buildActionCellHtml(orderId, status, values) + '</td>' +
+                        '<td>' + formatDateTime(order.created_at) + '</td>';
+
+                  targetTbody.prepend(row);
+                  updateTabBadgeByPane(targetPaneId, 1);
+                  updateToProcessCount();
+                  ensureOrderModals(order);
+                  initOrderInteractions();
+                  return true;
+            }
 
             // Fonction AJAX centralisée
             function submitFormAsync(formElement, orderId) {
@@ -692,26 +1288,16 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                     const $row = $('tr[data-order-id="' + orderId + '"]');
                                     console.log('[AJAX] Ligne trouvée:', $row.length, 'éléments pour orderId=' + orderId);
 
-                                    // Diminuer le badge de l'onglet source
-                                    const $tabPane = $row.closest('.tab-pane');
-                                    if ($tabPane.length) {
-                                          const paneId = $tabPane.attr('id');
-                                          const tabId = paneId.replace('pane-', 'tab-');
-                                          const $badge = $('button#' + tabId + ' .badge');
-                                          if ($badge.length) {
-                                                const currentCount = parseInt($badge.text(), 10);
-                                                if (currentCount > 0) $badge.text(currentCount - 1);
-                                          }
-                                    }
-
-                                    // fadeOut sur <tr> est bugué en jQuery (display: table-row vs block)
-                                    // On anime les <td> puis on supprime la ligne
-                                    $row.find('td').animate({ opacity: 0 }, 400, function() {
-                                          $row.remove();
-                                    });
+                                    const values = extractFormValues(formElement);
+                                    const newStatus = response.newstat || values.newstat || '';
+                                    const domUpdated = applyOrderUpdateInDom(orderId, newStatus, values);
 
                                     if (typeof window.showNotification === 'function') {
                                           window.showNotification('Commande mise à jour avec succès.', 'success', 4000);
+                                    }
+
+                                    if (!domUpdated) {
+                                          scheduleSmartReload();
                                     }
                               } else {
                                     alert('Erreur : ' + (response ? (response.error || JSON.stringify(response)) : 'Réponse vide'));
@@ -749,7 +1335,13 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
 
             // Initialise les interactions sur les commandes (modals et boutons rapides)
             function initOrderInteractions() {
+            attachModalFocusSafety();
+
             document.querySelectorAll('[id^="submitBtn"]').forEach(button => {
+                  if (button.dataset.listenerAttached === '1') {
+                        return;
+                  }
+
                   button.addEventListener('click', function(e) {
                         e.preventDefault();
                         e.stopPropagation();
@@ -767,6 +1359,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                               const mainModalElement = document.getElementById('orderModal' + orderId);
                               const mainModal = bootstrap.Modal.getInstance(mainModalElement);
                               if (mainModal) {
+                                    blurFocusInsideModal(mainModalElement);
                                     mainModal.hide();
                               }
 
@@ -788,9 +1381,15 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                               submitFormAsync(form, orderId);
                         }
                   });
+
+                  button.dataset.listenerAttached = '1';
             });
 
             document.querySelectorAll('.quick-deliver-btn').forEach(button => {
+                  if (button.dataset.listenerAttached === '1') {
+                        return;
+                  }
+
                   button.addEventListener('click', function(e) {
                         e.preventDefault();
                         e.stopPropagation();
@@ -814,6 +1413,8 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                               attachDeliveryModalHandler(orderId, deliveryModalElement);
                         }
                   });
+
+                  button.dataset.listenerAttached = '1';
             });
             }
 
@@ -826,6 +1427,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   const deliveryModal = bootstrap.Modal.getInstance(deliveryModalElement);
                   if (deliveryModal) {
                         deliveryModalConfirming = true;
+                        blurFocusInsideModal(deliveryModalElement);
                         deliveryModal.hide();
                   }
 
@@ -913,7 +1515,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
             }
 
             function markUserInteraction() {
-                  lastUserInteractionAt = Date.now();
+                  lastUserInteractionAt = window.Date.now();
             }
 
             function isUserBusyForReload() {
@@ -933,7 +1535,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   }
 
                   // Eviter de recharger juste après une interaction utilisateur
-                  return (Date.now() - lastUserInteractionAt) < 2500;
+                  return (window.Date.now() - lastUserInteractionAt) < 2500;
             }
 
             function scheduleSmartReload() {
@@ -1008,17 +1610,19 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
 
                               // Traiter chaque nouvelle commande
                               if (data.orders && Array.isArray(data.orders)) {
-                                    var shouldReload = false;
+                                    var hasDomSyncFailure = false;
                                     data.orders.forEach(function(order) {
                                           var notified = createDetailedNotification(order);
                                           if (!notified) {
                                                 showDetailedToast(order);
                                           }
-                                          shouldReload = true;
+                                          if (!addIncomingOrderToDom(order)) {
+                                                hasDomSyncFailure = true;
+                                          }
                                     });
 
-                                    // Actualiser une seule fois après toutes les notifications
-                                    if (shouldReload) {
+                                    // Fallback sécurité si la structure locale ne permet pas l'injection.
+                                    if (hasDomSyncFailure) {
                                           scheduleSmartReload();
                                     }
                               } else {
@@ -1027,9 +1631,8 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                           ? "Une nouvelle commande vient d'être passée."
                                           : data.new_count + " nouvelles commandes viennent d'être passées.";
                                     if (typeof window.showNotification === 'function') {
-                                          window.showNotification(msg + ' Actualisation automatique en cours...', 'success', 6000);
+                                          window.showNotification(msg, 'success', 6000);
                                     }
-                                    scheduleSmartReload();
                               }
                         })
                         .always(function() {
