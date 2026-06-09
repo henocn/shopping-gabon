@@ -5,7 +5,6 @@ namespace src;
 use PDO;
 use Minishlink\WebPush\WebPush;
 use Minishlink\WebPush\Subscription;
-use Minishlink\WebPush\ContentEncoding;
 
 /**
  * Envoi des notifications Web Push aux abonnés (admins / assistants).
@@ -15,7 +14,7 @@ class PushNotification
     private PDO $db;
     private string $configPath;
 
-    public function __construct(PDO $db, string $configPath = null)
+    public function __construct(PDO $db, ?string $configPath = null)
     {
         $this->db = $db;
         $this->configPath = $configPath ?? dirname(__DIR__) . '/config/vapid.php';
@@ -25,7 +24,7 @@ class PushNotification
      * Envoie une notification "nouvelle commande" à tous les abonnés.
      * $clientName et $productName sont optionnels, mais permettent un message plus détaillé.
      */
-    public function notifyNewOrder(string $clientName = null, string $productName = null): void
+    public function notifyNewOrder(?string $clientName = null, ?string $productName = null): void
     {
         $vapid = $this->loadVapid();
         if (!$vapid || empty($vapid['publicKey']) || empty($vapid['privateKey'])) {
@@ -92,7 +91,7 @@ class PushNotification
     /**
      * Retourne la clé publique VAPID si les push sont activés (pour le frontend).
      */
-    public static function getPublicKey(string $configPath = null): ?string
+    public static function getPublicKey(?string $configPath = null): ?string
     {
         $path = $configPath ?? dirname(__DIR__) . '/config/vapid.php';
         if (!is_file($path)) {

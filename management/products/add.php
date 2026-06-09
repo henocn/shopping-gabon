@@ -219,14 +219,24 @@ $countries = $countryStmt->fetchAll(PDO::FETCH_ASSOC);
 
     
 
-    <script src="../../assets/js/bootstrap.bundle.min.js"></script>
-    <script src="../../assets/js/add-product.js"></script>
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote.min.js"></script>
+    <script src="../../assets/js/bootstrap.bundle.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote-bs5.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote-bs5.min.js"></script>
+    <script src="../../assets/js/add-product.js"></script>
     <script>
         $(document).ready(function() {
-            $('#summernote').summernote();
+            if ($('#summernote').length) {
+                $('#summernote').summernote({
+                    height: 220, dialogsInBody: true
+                });
+            }
+
+            if ($('#summernote-ar').length) {
+                $('#summernote-ar').summernote({
+                    height: 220, dialogsInBody: true
+                });
+            }
             
             // Toggle price input visibility based on checkbox
             document.querySelectorAll('input[name="country_ids[]"]').forEach(checkbox => {

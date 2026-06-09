@@ -25,7 +25,7 @@ class Order
 
     public function getOrdersByStatus($status)
     {
-        $query = "SELECT COUNT(*) as total FROM orders WHERE status = :status";
+        $query = "SELECT COUNT(*) as total FROM orders WHERE newstat = :status";
         $stmt = $this->bd->prepare($query);
         $stmt->execute(['status' => $status]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -34,19 +34,12 @@ class Order
 
     public function CreateOrder($data)
     {
-        $req = $this->bd->prepare("
-        INSERT INTO orders 
-        (product_id, pack_id, purchase_price, total_price, unit_price, quantity, client_name, client_country, client_adress, client_phone, client_note, newstat, manager_id) 
-        VALUES 
-        (:product_id, :pack_id, :purchase_price, :total_price, :unit_price, :quantity, :client_name, :client_country, :client_adress, :client_phone, :client_note, :newstat, :manager_id)
-    ");
-
-        $req->execute([
+        $params = [
             'product_id' => (int) ($data['product_id'] ?? 0),
-            'pack_id' => (int) ($data['pack_id'] ?? 0),
+            'pack_id' => !empty($data['pack_id']) ? (int) $data['pack_id'] : null,
             'purchase_price' => (int) ($data['purchase_price'] ?? 0),
             'total_price' => (int) ($data['total_price'] ?? 0),
-            'unit_price' => (int) ($data['total_price'] ?? 0),
+            'unit_price' => (int) ($data['unit_price'] ?? $data['total_price'] ?? 0),
             'quantity' => (int) ($data['quantity'] ?? 1),
             'client_name' => $data['client_name'] ?? '',
             'client_country' => $data['client_country'],
@@ -55,7 +48,36 @@ class Order
             'client_note' => $data['client_note'] ?? null,
             'newstat' => 'new',
             'manager_id' => (int) ($data['manager_id'] ?? 0),
-        ]);
+        ];
+
+        try {
+            $req = $this->bd->prepare("
+                INSERT INTO orders 
+                (product_id, pack_id, purchase_price, unit_price, total_price, quantity, client_name, client_country, client_adress, client_phone, client_note, newstat, manager_id) 
+                VALUES 
+                (:product_id, :pack_id, :purchase_price, :unit_price, :total_price, :quantity, :client_name, :client_country, :client_adress, :client_phone, :client_note, :newstat, :manager_id)
+            ");
+            $req->execute($params);
+            return true;
+        } catch (PDOException $e) {
+            $isMissingUnitPriceColumn =
+                $e->getCode() === '42S22'
+                || stripos($e->getMessage(), "Unknown column 'unit_price'") !== false;
+
+            if (!$isMissingUnitPriceColumn) {
+                throw $e;
+            }
+
+            unset($params['unit_price']);
+            $fallback = $this->bd->prepare("
+                INSERT INTO orders 
+                (product_id, pack_id, purchase_price, total_price, quantity, client_name, client_country, client_adress, client_phone, client_note, newstat, manager_id) 
+                VALUES 
+                (:product_id, :pack_id, :purchase_price, :total_price, :quantity, :client_name, :client_country, :client_adress, :client_phone, :client_note, :newstat, :manager_id)
+            ");
+            $fallback->execute($params);
+        }
+
         return true;
     }
 
@@ -172,6 +194,117 @@ class Order
 
         $req = $this->bd->prepare($sql);
         $req->execute(['manager_id' => $userId]);
+        return $req->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getOrdersByStatuses(array $statuses)
+    {
+        if (empty($statuses)) {
+            return [];
+        }
+
+        $placeholders = [];
+        $params = [];
+        foreach (array_values($statuses) as $index => $status) {
+            $key = 'status_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $status;
+        }
+
+        $sql = "
+        SELECT
+            o.id AS order_id,
+            o.product_id,
+            o.pack_id,
+            o.quantity,
+            o.purchase_price,
+            o.total_price,
+            o.client_name,
+            o.client_country,
+            o.client_phone,
+            o.client_adress,
+            o.client_note,
+            o.manager_note,
+            o.manager_id,
+            o.newstat,
+            o.created_at,
+            o.updated_at,
+            COALESCE(pc.selling_price, 0) AS unit_price,
+            COALESCE(p.name, 'Produit supprimé') AS product_name,
+            COALESCE(pp.name, '') AS pack_name,
+            COALESCE(u.name, '—') AS assistant_name,
+            uc.name AS assistant_country_name,
+            uc.code AS assistant_country_code
+        FROM orders o
+        LEFT JOIN products p ON p.id = o.product_id
+        LEFT JOIN users u ON u.id = o.manager_id
+        LEFT JOIN countries uc ON (u.country = uc.code OR u.country = CAST(uc.id AS CHAR))
+        LEFT JOIN product_countries pc
+            ON pc.product_id = p.id
+           AND pc.country_id = o.client_country
+        LEFT JOIN product_packs pp ON pp.id = o.pack_id
+        WHERE o.newstat IN (" . implode(',', $placeholders) . ")
+        ORDER BY o.id DESC
+    ";
+
+        $req = $this->bd->prepare($sql);
+        $req->execute($params);
+        return $req->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getOrdersByStatusesAndUserId(array $statuses, int $userId)
+    {
+        if (empty($statuses)) {
+            return [];
+        }
+
+        $placeholders = [];
+        $params = ['manager_id' => $userId];
+        foreach (array_values($statuses) as $index => $status) {
+            $key = 'status_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $status;
+        }
+
+        $sql = "
+        SELECT
+            o.id AS order_id,
+            o.product_id,
+            o.pack_id,
+            o.quantity,
+            o.purchase_price,
+            o.total_price,
+            o.client_name,
+            o.client_country,
+            o.client_phone,
+            o.client_adress,
+            o.client_note,
+            o.manager_note,
+            o.manager_id,
+            o.newstat,
+            o.created_at,
+            o.updated_at,
+            COALESCE(pc.selling_price, 0) AS unit_price,
+            COALESCE(p.name, 'Produit supprimé') AS product_name,
+            COALESCE(pp.name, '') AS pack_name,
+            COALESCE(u.name, '—') AS assistant_name,
+            uc.name AS assistant_country_name,
+            uc.code AS assistant_country_code
+        FROM orders o
+        LEFT JOIN products p ON p.id = o.product_id
+        LEFT JOIN users u ON u.id = o.manager_id
+        LEFT JOIN countries uc ON (u.country = uc.code OR u.country = CAST(uc.id AS CHAR))
+        LEFT JOIN product_countries pc
+            ON pc.product_id = p.id
+           AND pc.country_id = o.client_country
+        LEFT JOIN product_packs pp ON pp.id = o.pack_id
+        WHERE o.newstat IN (" . implode(',', $placeholders) . ")
+          AND o.manager_id = :manager_id
+        ORDER BY o.id DESC
+    ";
+
+        $req = $this->bd->prepare($sql);
+        $req->execute($params);
         return $req->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -325,5 +458,88 @@ class Order
         $req = $this->bd->prepare($sql);
         $req->execute(['user_id' => $userId]);
         return $req->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getOrdersAfterId(int $lastId)
+    {
+        $sql = "
+        SELECT
+            o.id AS order_id,
+            o.client_name,
+            o.client_phone,
+            o.client_adress,
+            o.client_note,
+            o.manager_note,
+            o.quantity,
+            o.total_price,
+            o.newstat,
+            o.created_at,
+            o.updated_at,
+            CASE WHEN o.quantity > 0 THEN ROUND(o.total_price / o.quantity, 2) ELSE o.total_price END AS unit_price,
+            COALESCE(p.name, pp.name, 'Produit') AS product_name
+        FROM orders o
+        LEFT JOIN products p ON o.product_id = p.id
+        LEFT JOIN product_packs pp ON o.pack_id = pp.id
+        WHERE o.id > :lastId
+        ORDER BY o.id ASC
+        ";
+        $req = $this->bd->prepare($sql);
+        $req->execute(['lastId' => $lastId]);
+        return $req->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    public function getOrdersAfterIdByUserId(int $lastId, int $userId)
+    {
+        $sql = "
+        SELECT
+            o.id AS order_id,
+            o.client_name,
+            o.client_phone,
+            o.client_adress,
+            o.client_note,
+            o.manager_note,
+            o.quantity,
+            o.total_price,
+            o.newstat,
+            o.created_at,
+            o.updated_at,
+            CASE WHEN o.quantity > 0 THEN ROUND(o.total_price / o.quantity, 2) ELSE o.total_price END AS unit_price,
+            COALESCE(p.name, pp.name, 'Produit') AS product_name
+        FROM orders o
+        LEFT JOIN products p ON o.product_id = p.id
+        LEFT JOIN product_packs pp ON o.pack_id = pp.id
+        WHERE o.id > :lastId AND (p.user_id = :manager_id OR o.manager_id = :manager_id2)
+        ORDER BY o.id ASC
+        ";
+        $req = $this->bd->prepare($sql);
+        $req->execute([
+            'lastId' => $lastId,
+            'manager_id' => $userId,
+            'manager_id2' => $userId
+        ]);
+        return $req->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    public function getMaxOrderId(): int
+    {
+        $query = "SELECT MAX(id) as max_id FROM orders";
+        $stmt = $this->bd->prepare($query);
+        $stmt->execute();
+        $result = $stmt->fetch(\PDO::FETCH_ASSOC);
+        return (int) $result['max_id'];
+    }
+
+    public function getMaxOrderIdByUserId(int $userId): int
+    {
+        $sql = "
+        SELECT MAX(o.id) as max_id 
+        FROM orders o
+        LEFT JOIN products p ON o.product_id = p.id
+        WHERE p.user_id = :manager_id OR o.manager_id = :manager_id2
+        ";
+        $req = $this->bd->prepare($sql);
+        $req->execute(['manager_id' => $userId, 'manager_id2' => $userId]);
+        $result = $req->fetch(\PDO::FETCH_ASSOC);
+        return (int) $result['max_id'];
     }
 }

@@ -30,9 +30,22 @@ if (isset($_POST['valider'])) {
                 isset($_POST['client_country']) &&
                 isset($_POST['client_phone'])
             ) {
+                $productId = (int)($_POST['product_id'] ?? 0);
+                $selectedCountryId = (int)($_POST['client_country'] ?? 0);
+                $redirectUrl = "../../index.php?id=" . $productId . ($selectedCountryId > 0 ? "&country=" . $selectedCountryId : "");
+
+                // Anti-spam: Prevent double submissions
+                $orderHash = md5($_POST['product_id'] . $_POST['client_name'] . $_POST['client_phone']);
+                if (isset($_SESSION['last_order_hash']) && $_SESSION['last_order_hash'] === $orderHash && isset($_SESSION['last_order_time']) && (time() - $_SESSION['last_order_time']) < 60) {
+                    $_SESSION['order_message'] = "Votre commande a déjà été enregistrée. Merci !";
+                    header("Location: " . $redirectUrl);
+                    exit;
+                }
+                $_SESSION['last_order_hash'] = $orderHash;
+                $_SESSION['last_order_time'] = time();
 
                 $packId = !empty($_POST['pack_id']) ? htmlspecialchars($_POST['pack_id']) : null;
-                $productId = htmlspecialchars($_POST['product_id']);
+                $pack = null;
 
                 if($packId != null) {
                     $pack = $packManager->getPackById($packId);
@@ -40,6 +53,11 @@ if (isset($_POST['valider'])) {
 
                 //$pack = $packManager->getPackById($packId);
                 $product = $productManager->getProducts($productId);
+                if (!$product) {
+                    $_SESSION['order_message'] = "Produit introuvable. Veuillez réessayer.";
+                    header("Location: " . $redirectUrl);
+                    exit;
+                }
 
                 // Le formulaire envoie l’id du pays (client_country = id). On garde cet id pour la commande.
                 $clientCountryId = (int) ($_POST['client_country'] ?? 0);
@@ -47,7 +65,7 @@ if (isset($_POST['valider'])) {
                 $clientCountryCode = $countryManager->getCodeById($clientCountryId);
                 if (!$clientCountryId || !$clientCountryCode) {
                     $_SESSION['order_message'] = "Pays invalide. Veuillez réessayer.";
-                    header("Location: ../../index.php?id=" . $productId);
+                    header("Location: " . $redirectUrl);
                     exit;
                 }
 
@@ -61,7 +79,7 @@ if (isset($_POST['valider'])) {
                 }
                 if ($sellingPrice == 0) {
                     $_SESSION['order_message'] = "Une erreur est survenue lors de la passation de votre commande. Veuillez réessayer.";
-                    header("Location: ../../index.php?id=" . $productId);
+                    header("Location: " . $redirectUrl);
                     exit;
                 }
 
@@ -80,11 +98,14 @@ if (isset($_POST['valider'])) {
                     'pack_id'       => $packId,
                     'client_name'   => $_POST['client_name'],
                     'client_country' => $clientCountryId,
-                    'client_adress' => htmlspecialchars($_POST['client_adress']),
-                    'client_phone'  => htmlspecialchars($_POST['client_phone']),
-                    'client_note'   => htmlspecialchars($_POST['client_note']),
+                    'client_adress' => trim((string)($_POST['client_adress'] ?? '')),
+                    'client_phone'  => trim((string)($_POST['client_phone'] ?? '')),
+                    'client_note'   => trim((string)($_POST['client_note'] ?? '')),
                     'purchase_price'    => $product['purchase_price'],
                     'total_price'   => !empty($pack['price']) ? $pack['price'] : $sellingPrice,
+                    'unit_price'    => !empty($pack['price'])
+                        ? (int) round(((int) $pack['price']) / max(1, (int) ($pack['quantity'] ?? 1)))
+                        : (int) $sellingPrice,
                     'quantity'      => !empty($pack['quantity']) ? $pack['quantity'] : 1,
                     'manager_id'   => $managerId,
                 ];
@@ -96,16 +117,17 @@ if (isset($_POST['valider'])) {
                         $push = new \src\PushNotification($cnx);
                         $push->notifyNewOrder(
                             (string)($_POST['client_name'] ?? ''),
-                            (string)($product['name'] ?? '')
+                            (string)($product['name'] ?? ''),
+                            isset($data['total_price']) ? (int)$data['total_price'] : null
                         );
                     } catch (\Throwable $e) {
                         // Ne pas bloquer la commande si la push échoue
                     }
                     $_SESSION['order_message'] = "Votre commande a été passée avec succès. Nous vous contacterons bientôt.";
-                    header("Location: ../../index.php?id=" . $productId);
+                    header("Location: " . $redirectUrl);
                 } else {
                     $_SESSION['order_message'] = "Une erreur est survenue lors de la passation de votre commande. Veuillez réessayer.";
-                    header("Location: ../../index.php?id=" . $productId);
+                    header("Location: " . $redirectUrl);
                 }
             }
             break;
@@ -116,7 +138,8 @@ if (isset($_POST['valider'])) {
                 $existingOrder = $orderManager->getOrderById($orderId);
 
                 if (!$existingOrder) {
-                    if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'fetch') {
+                    $isAjax = isset($_POST['is_ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && in_array(strtolower($_SERVER['HTTP_X_REQUESTED_WITH']), ['fetch', 'xmlhttprequest']));
+                if ($isAjax) {
                         header('Content-Type: application/json');
                         echo json_encode([
                             'success' => false,
@@ -130,10 +153,14 @@ if (isset($_POST['valider'])) {
                     exit;
                 }
 
-                $newStatus = htmlspecialchars($_POST['newstat'] ?? '');
+                $allowedStatuses = ['new', 'remind', 'unreachable', 'processing', 'deliver', 'canceled'];
+                $incomingStatus = strtolower(trim((string)($_POST['newstat'] ?? '')));
+                $newStatus = in_array($incomingStatus, $allowedStatuses, true)
+                    ? $incomingStatus
+                    : (string)$existingOrder['newstat'];
                 $updatedQuantity = (int)($_POST['quantity'] ?? $existingOrder['quantity']);
                 $updatedTotal = (float)($_POST['total_price'] ?? $existingOrder['total_price']);
-                $managerNote = htmlspecialchars($_POST['manager_note'] ?? '');
+                $managerNote = trim((string)($_POST['manager_note'] ?? ''));
 
                 $data = [
                     'id'           => $orderId,
@@ -164,7 +191,8 @@ if (isset($_POST['valider'])) {
                     $depenseManager->createDepense($depenseData);
                 }
 
-                if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'fetch') {
+                $isAjax = isset($_POST['is_ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && in_array(strtolower($_SERVER['HTTP_X_REQUESTED_WITH']), ['fetch', 'xmlhttprequest']));
+                if ($isAjax) {
                     header('Content-Type: application/json');
                     echo json_encode([
                         'success' => true,
@@ -177,7 +205,8 @@ if (isset($_POST['valider'])) {
                 header("Location: index.php?message=" . $message);
                 exit;
             } else {
-                if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'fetch') {
+                $isAjax = isset($_POST['is_ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && in_array(strtolower($_SERVER['HTTP_X_REQUESTED_WITH']), ['fetch', 'xmlhttprequest']));
+                if ($isAjax) {
                     header('Content-Type: application/json');
                     echo json_encode([
                         'success' => false,
