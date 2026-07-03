@@ -103,6 +103,21 @@ if (!empty($productCountries)) {
 
 $displayTitle = $product['name'];
 $displayDescription = $product['description'];
+
+$facebookPixelIds = ['1536994954069676', '1373481401089526'];
+$envPath = __DIR__ . '/src/.env';
+if (is_file($envPath)) {
+    $envConfig = parse_ini_file($envPath, true);
+    if (!empty($envConfig['facebook_pixels']) && is_array($envConfig['facebook_pixels'])) {
+        $envFacebookPixelIds = array_values(array_filter(
+            array_map('strval', array_keys($envConfig['facebook_pixels'])),
+            static fn($pixelId) => preg_match('/^\d+$/', $pixelId)
+        ));
+        if (!empty($envFacebookPixelIds)) {
+            $facebookPixelIds = $envFacebookPixelIds;
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -136,7 +151,7 @@ $displayDescription = $product['description'];
     <link rel="stylesheet" href="./assets/css/index.css">
     <link rel="stylesheet" href="./assets/css/product-store.css">
 </head>
-
+ 
 <body class="page-storefront product-page">
 
     <header class="store-header">
@@ -200,6 +215,10 @@ $displayDescription = $product['description'];
 
                         <input type="hidden" name="product_id" value="<?= $product['id']; ?>">
                         <input type="hidden" name="valider" value="commander">
+                        <!-- Champs CAPI : event_id et cookies Facebook pour la déduplication -->
+                        <input type="hidden" name="fb_event_id" id="fb_event_id" value="">
+                        <input type="hidden" name="fb_fbp" id="fb_fbp" value="">
+                        <input type="hidden" name="fb_fbc" id="fb_fbc" value="">
                     <div class="modal-footer-custom">
                         <button type="submit" class="btn-submit-order">
                             <i class='bx bx-check-circle'></i>
@@ -269,6 +288,13 @@ $displayDescription = $product['description'];
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <script>
+        window.trackingManagerConfig = {
+            facebook: {
+                pixels: <?= json_encode($facebookPixelIds, JSON_UNESCAPED_SLASHES); ?>
+            }
+        };
+    </script>
     <script src="assets/js/tracking-manager.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="assets/js/bootstrap.bundle.min.js"></script>
@@ -513,31 +539,42 @@ $displayDescription = $product['description'];
             return getCurrentCurrencyInfo().code;
         }
 
-        function trackWhenReady(eventName, eventData, attempts) {
+        /**
+         * Attend que le TrackingManager soit prêt, puis envoie l'événement.
+         * Supporte un 4ème argument `options` pour passer eventID, etc.
+         */
+        function trackWhenReady(eventName, eventData, attemptsOrOptions, maybeOptions) {
+            var options = {};
+            var attempts;
+
+            // Déterminer les arguments : trackWhenReady(name, data, options) ou trackWhenReady(name, data, attempts, options)
+            if (typeof attemptsOrOptions === 'object' && attemptsOrOptions !== null && !Array.isArray(attemptsOrOptions)) {
+                options = attemptsOrOptions;
+                attempts = undefined;
+            } else {
+                attempts = attemptsOrOptions;
+                if (typeof maybeOptions === 'object' && maybeOptions !== null) {
+                    options = maybeOptions;
+                }
+            }
+
             var defaultAttemptsByEvent = {
                 Purchase: 40,
                 InitiateCheckout: 30,
-                QualifiedVisit: 20,
-                FormAbandoned: 20,
-                FormStarted: 20,
-                FormCompleted: 20,
-                FormProgress25: 15,
-                FormProgress50: 15,
-                FormProgress75: 15,
-                FormInactive: 15,
-                FormFieldFocus: 10
+                ViewContent: 20
             };
             var fallbackAttempts = 20;
             var remaining = typeof attempts === 'number'
                 ? attempts
                 : (defaultAttemptsByEvent[eventName] || fallbackAttempts);
+
             if (typeof trackEvent === 'function' && (!window.trackingManager || window.trackingManager.isReady)) {
-                trackEvent(eventName, eventData);
+                trackEvent(eventName, eventData, ['facebook'], options);
                 return;
             }
             if (remaining <= 0) return;
             setTimeout(function() {
-                trackWhenReady(eventName, eventData, remaining - 1);
+                trackWhenReady(eventName, eventData, remaining - 1, options);
             }, 200);
         }
 
@@ -573,191 +610,102 @@ $displayDescription = $product['description'];
                 countrySelect.addEventListener('change', updatePriceFromCountry);
             }
 
-            setTimeout(function() {
-                trackWhenReady('QualifiedVisit', {
-                    content_ids: ['<?= $product['id']; ?>'],
-                    content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
-                    value: <?= $displayPrice; ?>,
-                    currency: getCurrentCurrencyCode()
-                });
-            }, 5000);
+            // ──────────────────────────────────────────────
+            //  ÉVÉNEMENT STANDARD : ViewContent (remplace QualifiedVisit)
+            //  Envoyé au chargement de la page produit
+            // ──────────────────────────────────────────────
+            trackWhenReady('ViewContent', {
+                content_ids: ['<?= $product['id']; ?>'],
+                content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
+                content_type: 'product',
+                value: <?= $displayPrice; ?>,
+                currency: getCurrentCurrencyCode()
+            });
 
-            const productId = '<?= $product['id']; ?>';
-            const orderLimitApi = window.createOrderLimit(productId, {
+            var productId = '<?= $product['id']; ?>';
+            var orderLimitApi = window.createOrderLimit(productId, {
                 limit: 3,
                 doubleClickGuardMs: 2500,
                 windowMs: 5 * 60 * 60 * 1000
             });
             orderLimitApi.applyLimitState();
 
-            const orderForm = document.querySelector('.express-checkout-form');
-            const orderModal = document.getElementById('orderModal');
-            let formStarted = false;
-            let formSubmitted = false;
-            let formStartTime = null;
-            let abandonTimer = null;
-            let formAbandonedSent = false;
+            var orderForm = document.querySelector('.express-checkout-form');
+            var formSubmitted = false;
 
-            const sendFormAbandoned = function(abandonmentPoint) {
-                if (!formStarted || formSubmitted || formAbandonedSent) return;
-                formAbandonedSent = true;
-                const timeSpent = formStartTime ? Math.round((Date.now() - formStartTime) / 1000) : 0;
-                trackWhenReady('FormAbandoned', {
-                    content_ids: ['<?= $product['id']; ?>'],
-                    content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
-                    value: <?= $displayPrice; ?>,
-                    currency: getCurrentCurrencyCode(),
-                    time_spent: timeSpent,
-                    abandonment_point: abandonmentPoint
-                });
-            };
-
+            // ──────────────────────────────────────────────
+            //  ÉVÉNEMENT STANDARD : InitiateCheckout
+            //  Envoyé au premier focus sur un champ du formulaire
+            // ──────────────────────────────────────────────
+            var initiateCheckoutSent = false;
             if (orderForm) {
-                const formFields = orderForm.querySelectorAll('input[type="text"], input[type="tel"], textarea, select');
-                let fieldsCompleted = 0;
-                const totalFields = formFields.length;
+                var formFields = orderForm.querySelectorAll('input[type="text"], input[type="tel"], textarea');
+                formFields.forEach(function(field) {
+                    field.addEventListener('focus', function onFirstFocus() {
+                        if (initiateCheckoutSent) return;
+                        initiateCheckoutSent = true;
 
-                formFields.forEach((field, index) => {
-                    field.addEventListener('input', function() {
-                        if (!formStarted && this.value.length > 2) {
-                            formStarted = true;
-                            formStartTime = Date.now();
-
-                            trackWhenReady('FormStarted', {
-                                content_ids: ['<?= $product['id']; ?>'],
-                                content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
-                                value: <?= $displayPrice; ?>,
-                                currency: getCurrentCurrencyCode()
-                            });
-
-                            abandonTimer = setTimeout(function() {
-                                if (formStarted && !formSubmitted) {
-                                    trackWhenReady('FormInactive', {
-                                        content_ids: ['<?= $product['id']; ?>'],
-                                        content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
-                                        value: <?= $displayPrice; ?>,
-                                        currency: getCurrentCurrencyCode(),
-                                        time_spent: Math.round((Date.now() - formStartTime) / 1000)
-                                    });
-                                }
-                            }, 300000);
-                        }
-
-                        if (this.value.length > 2) {
-                            const currentFieldsCompleted = Array.from(formFields).filter(f => f.value.length > 2).length;
-
-                            if (currentFieldsCompleted > fieldsCompleted) {
-                                fieldsCompleted = currentFieldsCompleted;
-                                const progressPercent = Math.round((fieldsCompleted / totalFields) * 100);
-
-                                if (progressPercent === 25) {
-                                    trackWhenReady('FormProgress25', {
-                                        content_ids: ['<?= $product['id']; ?>'],
-                                        content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
-                                        value: <?= $displayPrice; ?>,
-                                        currency: getCurrentCurrencyCode(),
-                                        progress: 25
-                                    });
-                                } else if (progressPercent === 50) {
-                                    trackWhenReady('FormProgress50', {
-                                        content_ids: ['<?= $product['id']; ?>'],
-                                        content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
-                                        value: <?= $displayPrice; ?>,
-                                        currency: getCurrentCurrencyCode(),
-                                        progress: 50
-                                    });
-                                } else if (progressPercent === 75) {
-                                    trackWhenReady('FormProgress75', {
-                                        content_ids: ['<?= $product['id']; ?>'],
-                                        content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
-                                        value: <?= $displayPrice; ?>,
-                                        currency: getCurrentCurrencyCode(),
-                                        progress: 75
-                                    });
-                                } else if (progressPercent === 100) {
-                                    trackWhenReady('FormCompleted', {
-                                        content_ids: ['<?= $product['id']; ?>'],
-                                        content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
-                                        value: <?= $displayPrice; ?>,
-                                        currency: getCurrentCurrencyCode(),
-                                        progress: 100
-                                    });
-                                }
-                            }
-                        }
-
-                        if (abandonTimer) {
-                            clearTimeout(abandonTimer);
-                            abandonTimer = setTimeout(function() {
-                                if (formStarted && !formSubmitted) {
-                                    trackWhenReady('FormInactive', {
-                                        content_ids: ['<?= $product['id']; ?>'],
-                                        content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
-                                        value: <?= $displayPrice; ?>,
-                                        currency: getCurrentCurrencyCode(),
-                                        time_spent: Math.round((Date.now() - formStartTime) / 1000)
-                                    });
-                                }
-                            }, 300000);
-                        }
-                    });
-
-                    field.addEventListener('focus', function() {
-                        trackWhenReady('FormFieldFocus', {
+                        var currentPrice = (displayPriceEl && parseInt(displayPriceEl.getAttribute('data-price'), 10)) || <?= (int)$displayPrice; ?>;
+                        trackWhenReady('InitiateCheckout', {
                             content_ids: ['<?= $product['id']; ?>'],
-                            content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
-                            value: <?= $displayPrice; ?>,
+                            content_type: 'product',
+                            contents: [{
+                                id: '<?= $product['id']; ?>',
+                                quantity: 1,
+                                item_price: currentPrice
+                            }],
                             currency: getCurrentCurrencyCode(),
-                            field_name: this.name || this.id || 'unknown',
-                            field_index: index
+                            num_items: 1,
+                            value: currentPrice
                         });
                     });
                 });
 
-                // Détecter la fermeture du modal = formulaire abandonné
-                if (orderModal) {
-                    orderModal.addEventListener('hidden.bs.modal', function() {
-                        sendFormAbandoned('modal_close');
-                    });
-                }
-
-                window.addEventListener('beforeunload', function() {
-                    sendFormAbandoned('page_leave');
-                });
-
-                document.addEventListener('visibilitychange', function() {
-                    if (document.visibilityState === 'hidden') {
-                        sendFormAbandoned('page_hide');
-                    }
-                });
-
+                // ──────────────────────────────────────────────
+                //  SOUMISSION DU FORMULAIRE + Purchase
+                // ──────────────────────────────────────────────
                 orderForm.addEventListener('submit', function(e) {
                     e.preventDefault();
 
-                    if (formSubmitted) {
-                        return;
-                    }
-
-                    if (!orderLimitApi.canSubmit()) {
-                        return;
-                    }
+                    if (formSubmitted) return;
+                    if (!orderLimitApi.canSubmit()) return;
 
                     orderLimitApi.registerSubmit();
-
                     formSubmitted = true;
 
                     // Disable the button immediately
-                    const submitBtn = orderForm.querySelector('.btn-submit-order');
+                    var submitBtn = orderForm.querySelector('.btn-submit-order');
                     if (submitBtn) {
                         submitBtn.disabled = true;
                         submitBtn.style.pointerEvents = 'none';
-                        const span = submitBtn.querySelector('span');
+                        var span = submitBtn.querySelector('span');
                         if (span) {
                             span.innerHTML = 'Traitement...';
                         }
                     }
 
-                    // Déterminer si un pack est sélectionné et calculer dynamiquement la valeur
+                    // ── Générer un event_id unique pour la déduplication Pixel ↔ CAPI ──
+                    var eventId = '';
+                    if (window.trackingManager && typeof window.trackingManager.generateEventId === 'function') {
+                        eventId = window.trackingManager.generateEventId();
+                    } else {
+                        eventId = Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 10);
+                    }
+
+                    // ── Injecter event_id + cookies Facebook dans le formulaire ──
+                    var fbEventIdField = document.getElementById('fb_event_id');
+                    var fbFbpField = document.getElementById('fb_fbp');
+                    var fbFbcField = document.getElementById('fb_fbc');
+
+                    if (fbEventIdField) fbEventIdField.value = eventId;
+
+                    if (window.trackingManager) {
+                        var browserData = window.trackingManager.getBrowserData();
+                        if (fbFbpField) fbFbpField.value = browserData.fbp || '';
+                        if (fbFbcField) fbFbcField.value = browserData.fbc || '';
+                    }
+
+                    // ── Construire le payload Purchase ──
                     var packIdInput = document.getElementById('selectedPackId');
                     var packSelect = document.getElementById('packSelection');
                     var selectedPackId = packIdInput ? (packIdInput.value || '') : '';
@@ -766,7 +714,6 @@ $displayDescription = $product['description'];
                     };
 
                     if (selectedPackId && packSelect) {
-                        // Retrouver l'option correspondant au pack sélectionné
                         var option = Array.from(packSelect.options).find(function(opt) {
                             return opt.value === selectedPackId;
                         });
@@ -781,7 +728,7 @@ $displayDescription = $product['description'];
                                 quantity: packQty,
                                 item_price: packPrice
                             }];
-                            purchasePayload.num_items = packQty; // total d'unités dans le pack
+                            purchasePayload.num_items = packQty;
                             purchasePayload.value = packPrice;
                         }
                     }
@@ -799,9 +746,10 @@ $displayDescription = $product['description'];
                         purchasePayload.value = currentPrice;
                     }
 
-                    // Envoyer uniquement l'événement Purchase (conseillé par Facebook)
-                    trackWhenReady('Purchase', purchasePayload);
+                    // ── Envoyer Purchase avec eventID pour la déduplication ──
+                    trackWhenReady('Purchase', purchasePayload, { eventID: eventId });
 
+                    // ── Soumettre le formulaire au serveur ──
                     var submitUrl = orderForm.getAttribute('action') || window.location.href;
                     var formData = new FormData(orderForm);
 
@@ -828,32 +776,11 @@ $displayDescription = $product['description'];
                             });
                     };
 
-                    setTimeout(sendRequest, 300);
+                    // Laisser le temps au Pixel d'envoyer le Purchase avant la navigation
+                    setTimeout(sendRequest, 400);
                 });
             }
         });
-
-        function openOrderForm() {
-            var displayPriceEl = document.getElementById('display-price');
-            var currentPrice = (displayPriceEl && parseInt(displayPriceEl.getAttribute('data-price'), 10)) || <?= (int)$displayPrice; ?>;
-            trackWhenReady('InitiateCheckout', {
-                content_ids: ['<?= $product['id']; ?>'],
-                contents: [{
-                    'id': '<?= $product['id']; ?>',
-                    'quantity': 1,
-                    'item_price': currentPrice
-                }],
-                currency: getCurrentCurrencyCode(),
-                num_items: 1,
-                value: currentPrice
-            });
-
-            var modalElement = document.getElementById('orderModal');
-            if (modalElement && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-                var modal = new bootstrap.Modal(modalElement);
-                modal.show();
-            }
-        }
     </script>
     
 </body>

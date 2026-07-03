@@ -1,6 +1,6 @@
 class TrackingManager {
     constructor(config = {}) {
-        this.config = {
+        var defaultConfig = {
             facebook: {
                 enabled: true,
                 pixels: ['1536994954069676','1373481401089526'],
@@ -15,7 +15,22 @@ class TrackingManager {
                 pixelId: null
             },
             debug: false,
-            ...config
+        };
+        this.config = {
+            ...defaultConfig,
+            ...config,
+            facebook: {
+                ...defaultConfig.facebook,
+                ...(config.facebook || {})
+            },
+            googleAnalytics: {
+                ...defaultConfig.googleAnalytics,
+                ...(config.googleAnalytics || {})
+            },
+            tiktok: {
+                ...defaultConfig.tiktok,
+                ...(config.tiktok || {})
+            }
         };
         this.isReady = false;
         this.pageViewTracked = false;
@@ -111,45 +126,138 @@ class TrackingManager {
         });
     }
 
-    track(eventName, eventData = {}, platforms = ['facebook']) {
+    /**
+     * Génère un identifiant unique pour la déduplication Pixel ↔ CAPI.
+     * Format : timestamp base36 + random base36 → ~20 caractères.
+     * @returns {string}
+     */
+    generateEventId() {
+        var ts = Date.now().toString(36);
+        var rand = Math.random().toString(36).substring(2, 10);
+        return ts + '_' + rand;
+    }
+
+    /**
+     * Lit un cookie par nom.
+     * @param {string} name
+     * @returns {string}
+     */
+    getCookie(name) {
+        var cookies = document.cookie ? document.cookie.split('; ') : [];
+        for (var i = 0; i < cookies.length; i++) {
+            var parts = cookies[i].split('=');
+            var key = decodeURIComponent(parts.shift());
+            if (key === name) {
+                return decodeURIComponent(parts.join('='));
+            }
+        }
+        return '';
+    }
+
+    /**
+     * Retourne le cookie _fbp (First-Party Browser Pixel cookie).
+     * @returns {string}
+     */
+    getFbp() {
+        return this.getCookie('_fbp');
+    }
+
+    /**
+     * Retourne le cookie _fbc (Click ID cookie, créé par fbclid).
+     * Si absent, tente de le générer à partir de fbclid dans l'URL.
+     * @returns {string}
+     */
+    getFbc() {
+        var fbc = this.getCookie('_fbc');
+        if (fbc) return fbc;
+
+        // Tenter de construire _fbc depuis fbclid dans l'URL
+        try {
+            var params = new URLSearchParams(window.location.search);
+            var fbclid = params.get('fbclid');
+            if (fbclid) {
+                return 'fb.1.' + Date.now() + '.' + fbclid;
+            }
+        } catch (e) {}
+        return '';
+    }
+
+    /**
+     * Retourne les données navigateur utiles pour le CAPI.
+     * @returns {{fbp: string, fbc: string}}
+     */
+    getBrowserData() {
+        return {
+            fbp: this.getFbp(),
+            fbc: this.getFbc()
+        };
+    }
+
+    /**
+     * Track un événement sur les plateformes spécifiées.
+     * @param {string} eventName Nom de l'événement
+     * @param {Object} eventData Données de l'événement
+     * @param {string[]} platforms Plateformes cibles
+     * @param {Object} [options] Options supplémentaires (eventID, etc.)
+     */
+    track(eventName, eventData = {}, platforms = ['facebook'], options = {}) {
         if (!this.isReady) {
-            this.eventQueue.push({ eventName, eventData, platforms });
+            this.eventQueue.push({ eventName, eventData, platforms, options });
             return;
         }
         platforms.forEach(platform => {
             try {
                 switch (platform) {
-                    case 'facebook': this.trackFacebook(eventName, eventData); break;
+                    case 'facebook': this.trackFacebook(eventName, eventData, options); break;
                     case 'googleAnalytics': this.trackGoogleAnalytics(eventName, eventData); break;
                     case 'tiktok': this.trackTikTok(eventName, eventData); break;
                 }
             } catch (error) {}
         });
     }
-
-    trackFacebook(eventName, eventData) {
+ 
+    /**
+     * Envoie un événement au Pixel Facebook.
+     * Supporte l'eventID pour la déduplication avec le CAPI.
+     */
+    trackFacebook(eventName, eventData, options = {}) {
         if (!this.config.facebook.enabled) return;
         try {
-            if (typeof fbq === 'function' && fbq.callMethod) {
-                const standardEvents = ['PageView', 'Purchase', 'Lead', 'InitiateCheckout', 'ViewContent', 'CompleteRegistration'];
+            if (typeof fbq === 'function') {
+                var standardEvents = ['PageView', 'Purchase', 'Lead', 'InitiateCheckout', 'ViewContent', 'CompleteRegistration', 'AddToCart', 'AddPaymentInfo', 'Search'];
+                var fbOptions = {};
+
+                // Ajouter l'eventID pour la déduplication
+                if (options.eventID) {
+                    fbOptions.eventID = options.eventID;
+                }
+
                 if (standardEvents.includes(eventName)) {
-                    fbq('track', eventName, eventData);
+                    if (Object.keys(fbOptions).length > 0) {
+                        fbq('track', eventName, eventData, fbOptions);
+                    } else {
+                        fbq('track', eventName, eventData);
+                    }
                 } else {
-                    fbq('trackCustom', eventName, eventData);
+                    if (Object.keys(fbOptions).length > 0) {
+                        fbq('trackCustom', eventName, eventData, fbOptions);
+                    } else {
+                        fbq('trackCustom', eventName, eventData);
+                    }
                 }
             } else {
                 // Fallback via image uniquement si fbq indisponible
-                this.trackFacebookViaImage(eventName, eventData);
+                this.trackFacebookViaImage(eventName, eventData, options);
             }
         } catch (error) {
-            this.trackFacebookViaImage(eventName, eventData);
+            this.trackFacebookViaImage(eventName, eventData, options);
         }
     }
 
-    trackFacebookViaImage(eventName, eventData) {
+    trackFacebookViaImage(eventName, eventData, options = {}) {
         this.config.facebook.pixels.forEach(pixelId => {
             try {
-                const params = new URLSearchParams({
+                var params = new URLSearchParams({
                     id: pixelId,
                     ev: eventName,
                     noscript: '1',
@@ -158,7 +266,10 @@ class TrackingManager {
                 if (eventData.value) params.append('cd[value]', eventData.value);
                 if (eventData.currency) params.append('cd[currency]', eventData.currency);
                 if (eventData.content_ids) params.append('cd[content_ids]', JSON.stringify(eventData.content_ids));
-                const img = new Image();
+                if (eventData.content_type) params.append('cd[content_type]', eventData.content_type);
+                if (eventData.num_items) params.append('cd[num_items]', eventData.num_items);
+                if (options.eventID) params.append('eid', options.eventID);
+                var img = new Image();
                 img.src = 'https://www.facebook.com/tr?' + params.toString();
             } catch (error) {}
         });
@@ -166,8 +277,8 @@ class TrackingManager {
 
     processQueue() {
         while (this.eventQueue.length > 0) {
-            const event = this.eventQueue.shift();
-            this.track(event.eventName, event.eventData, event.platforms);
+            var event = this.eventQueue.shift();
+            this.track(event.eventName, event.eventData, event.platforms, event.options || {});
         }
     }
 
@@ -189,21 +300,23 @@ class TrackingManager {
     }
 
     removeFacebookPixel(pixelId) {
-        const index = this.config.facebook.pixels.indexOf(pixelId);
+        var index = this.config.facebook.pixels.indexOf(pixelId);
         if (index > -1) this.config.facebook.pixels.splice(index, 1);
     }
 }
 
 // Créer l'instance TrackingManager seulement si elle n'existe pas déjà
 if (!window.trackingManager) {
-    window.trackingManager = new TrackingManager();
+    window.trackingManager = new TrackingManager(window.trackingManagerConfig || {});
 }
 
-// Fonction globale pour tracking
+// Fonction globale pour tracking (avec support eventID via options)
 if (!window.trackEvent) {
-    window.trackEvent = function(eventName, eventData = {}, platforms = ['facebook']) {
+    window.trackEvent = function(eventName, eventData, platforms, options) {
+        if (!platforms) platforms = ['facebook'];
+        if (!options) options = {};
         if (window.trackingManager) {
-            window.trackingManager.track(eventName, eventData, platforms);
+            window.trackingManager.track(eventName, eventData, platforms, options);
         }
     };
 }

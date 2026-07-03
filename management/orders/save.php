@@ -113,6 +113,7 @@ if (isset($_POST['valider'])) {
 
 
                 if ($orderManager->CreateOrder($data)) {
+                    // ── Push notification ──
                     try {
                         $push = new \src\PushNotification($cnx);
                         $push->notifyNewOrder(
@@ -123,6 +124,72 @@ if (isset($_POST['valider'])) {
                     } catch (\Throwable $e) {
                         // Ne pas bloquer la commande si la push échoue
                     }
+
+                    // ── Facebook Conversions API (CAPI) — envoi serveur Purchase ──
+                    try {
+                        $fbCapi = new \src\FacebookCAPI();
+                        if ($fbCapi->isConfigured()) {
+                            // Récupérer l'event_id pour la déduplication avec le Pixel navigateur
+                            $fbEventId = trim((string)($_POST['fb_event_id'] ?? ''));
+                            if (empty($fbEventId)) {
+                                // Générer un event_id si le navigateur ne l'a pas fourni
+                                $fbEventId = bin2hex(random_bytes(12));
+                            }
+
+                            // Déterminer la devise
+                            $normalizedCountryCode = strtoupper(trim($clientCountryCode));
+                            $currencyCode = 'XOF';
+                            if ($normalizedCountryCode === 'GN') {
+                                $currencyCode = 'GNF';
+                            }
+
+                            // Récupérer le phone_code du pays pour normalisation du téléphone
+                            $phoneCode = '';
+                            foreach ($productCountries as $ctry) {
+                                if ((int)$ctry['id'] === $clientCountryId) {
+                                    $phoneCode = $ctry['phone_code'] ?? '';
+                                    break;
+                                }
+                            }
+
+                            $capiResults = $fbCapi->sendPurchaseEvent(
+                                [
+                                    'product_id'  => $productId,
+                                    'pack_id'     => $packId,
+                                    'total_price' => $data['total_price'],
+                                    'unit_price'  => $data['unit_price'],
+                                    'quantity'    => $data['quantity'],
+                                ],
+                                [
+                                    'client_name'  => $_POST['client_name'] ?? '',
+                                    'client_phone' => $_POST['client_phone'] ?? '',
+                                    'country_code' => $clientCountryCode,
+                                    'phone_code'   => $phoneCode,
+                                ],
+                                $fbEventId,
+                                [
+                                    'ip'         => $_SERVER['REMOTE_ADDR'] ?? '',
+                                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+                                    'fbp'        => trim((string)($_POST['fb_fbp'] ?? ($_COOKIE['_fbp'] ?? ''))),
+                                    'fbc'        => trim((string)($_POST['fb_fbc'] ?? ($_COOKIE['_fbc'] ?? ''))),
+                                    'source_url' => 'https://luxemarket.click/index.php?id=' . $productId,
+                                ],
+                                $currencyCode
+                            );
+
+                            foreach ($capiResults as $pixelId => $result) {
+                                if (!($result['success'] ?? false)) {
+                                    error_log('[CAPI] Purchase échoué pixel ' . $pixelId . ': ' . ($result['error'] ?? 'Erreur inconnue'));
+                                }
+                            }
+                        } else {
+                            error_log('[CAPI] Configuration absente: aucun pixel/token chargé depuis src/.env');
+                        }
+                    } catch (\Throwable $e) {
+                        // Ne JAMAIS bloquer la commande si le CAPI échoue
+                        error_log('[CAPI] Erreur envoi Purchase: ' . $e->getMessage());
+                    }
+
                     $_SESSION['order_message'] = "Votre commande a été passée avec succès. Nous vous contacterons bientôt.";
                     header("Location: " . $redirectUrl);
                 } else {
