@@ -190,6 +190,16 @@ if (isset($_POST['valider'])) {
                         error_log('[CAPI] Erreur envoi Purchase: ' . $e->getMessage());
                     }
 
+                    // ── Stocker les données Purchase en session pour le Pixel navigateur (déduplication avec CAPI) ---
+                    // Ces données seront lues dans index.php pour envoyer l'événement via le navigateur
+                    $_SESSION['fb_purchase_data'] = [
+                        'value' => $data['total_price'] ?? 0,
+                        'currency' => $currencyCode ?? 'XOF',
+                        'content_ids' => $packId ?? $productId,
+                        'content_name' => $product['name'] ?? '',
+                        'event_id' => $fbEventId ?? bin2hex(random_bytes(12))
+                    ];
+
                     $_SESSION['order_message'] = "Votre commande a été passée avec succès. Nous vous contacterons bientôt.";
                     header("Location: " . $redirectUrl);
                 } else {

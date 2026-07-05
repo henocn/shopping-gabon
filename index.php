@@ -5,6 +5,7 @@ require 'vendor/autoload.php';
 use src\Connectbd;
 use src\Product;
 use src\Country;
+use src\FacebookTrackingConfig;
 
 $cnx = Connectbd::getConnection();
 $productManager = new Product($cnx);
@@ -104,19 +105,14 @@ if (!empty($productCountries)) {
 $displayTitle = $product['name'];
 $displayDescription = $product['description'];
 
-$facebookPixelIds = ['1536994954069676', '1373481401089526'];
-$envPath = __DIR__ . '/src/.env';
-if (is_file($envPath)) {
-    $envConfig = parse_ini_file($envPath, true);
-    if (!empty($envConfig['facebook_pixels']) && is_array($envConfig['facebook_pixels'])) {
-        $envFacebookPixelIds = array_values(array_filter(
-            array_map('strval', array_keys($envConfig['facebook_pixels'])),
-            static fn($pixelId) => preg_match('/^\d+$/', $pixelId)
-        ));
-        if (!empty($envFacebookPixelIds)) {
-            $facebookPixelIds = $envFacebookPixelIds;
-        }
-    }
+$facebookPixelIds = FacebookTrackingConfig::getBrowserPixelIds();
+$trackingManagerConfig = FacebookTrackingConfig::getBrowserConfig();
+$trackingManagerPath = __DIR__ . '/assets/js/site-interactions.js';
+$trackingManagerVersion = FacebookTrackingConfig::assetVersion($trackingManagerPath);
+$fbPurchaseData = null;
+if (isset($_SESSION['fb_purchase_data'])) {
+    $fbPurchaseData = $_SESSION['fb_purchase_data'];
+    unset($_SESSION['fb_purchase_data']);
 }
 ?>
 <!DOCTYPE html>
@@ -143,6 +139,12 @@ if (is_file($envPath)) {
     <meta name="twitter:image" content="https://luxemarket.click/uploads/main/<?= $product['image']; ?>" />
     <meta name="twitter:site" content="@luxemarketclick" />
 
+    <?php if (!empty($facebookPixelIds)): ?>
+    <script>
+        window.trackingManagerConfig = <?= json_encode($trackingManagerConfig, JSON_UNESCAPED_SLASHES); ?>;
+    </script>
+    <?php endif; ?>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap">
@@ -153,6 +155,13 @@ if (is_file($envPath)) {
 </head>
  
 <body class="page-storefront product-page">
+    <?php if (!empty($facebookPixelIds)): ?>
+    <noscript>
+        <?php foreach ($facebookPixelIds as $facebookPixelId): ?>
+            <img height="1" width="1" style="display:none" alt="" src="https://www.facebook.com/tr?id=<?= htmlspecialchars($facebookPixelId, ENT_QUOTES); ?>&ev=PageView&noscript=1">
+        <?php endforeach; ?>
+    </noscript>
+    <?php endif; ?>
 
     <header class="store-header">
         <div class="container">
@@ -288,14 +297,7 @@ if (is_file($envPath)) {
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
-    <script>
-        window.trackingManagerConfig = {
-            facebook: {
-                pixels: <?= json_encode($facebookPixelIds, JSON_UNESCAPED_SLASHES); ?>
-            }
-        };
-    </script>
-    <script src="assets/js/tracking-manager.js" defer></script>
+    <script src="assets/js/site-interactions.js?v=<?= (int)$trackingManagerVersion; ?>" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="assets/js/bootstrap.bundle.min.js"></script>
     <script src="assets/js/index.js"></script>
@@ -578,6 +580,19 @@ if (is_file($envPath)) {
             }, 200);
         }
 
+        <?php if ($fbPurchaseData): ?>
+        // ── Rejoue Purchase côté navigateur après redirection post-commande.
+        //    Le CAPI a déjà été envoyé côté serveur au moment de la commande (management/orders/save.php) ;
+        //    ceci ne sert qu'au Pixel navigateur (déduplication via le même event_id), pas de second appel CAPI.
+        trackWhenReady('Purchase', {
+            value: <?= json_encode((float)($fbPurchaseData['value'] ?? 0)) ?>,
+            currency: <?= json_encode((string)($fbPurchaseData['currency'] ?? 'XOF')) ?>,
+            content_ids: [<?= json_encode((string)($fbPurchaseData['content_ids'] ?? '')) ?>],
+            content_name: <?= json_encode((string)($fbPurchaseData['content_name'] ?? '')) ?>,
+            content_type: 'product'
+        }, { eventID: <?= json_encode((string)($fbPurchaseData['event_id'] ?? '')) ?>, skipServerRelay: true });
+        <?php endif; ?>
+
         document.addEventListener('DOMContentLoaded', function() {
             var countrySelect = document.getElementById('client_country_select');
             var displayPriceEl = document.getElementById('display-price');
@@ -747,7 +762,7 @@ if (is_file($envPath)) {
                     }
 
                     // ── Envoyer Purchase avec eventID pour la déduplication ──
-                    trackWhenReady('Purchase', purchasePayload, { eventID: eventId });
+                    trackWhenReady('Purchase', purchasePayload, { eventID: eventId, skipServerRelay: true });
 
                     // ── Soumettre le formulaire au serveur ──
                     var submitUrl = orderForm.getAttribute('action') || window.location.href;

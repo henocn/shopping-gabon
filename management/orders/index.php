@@ -1665,12 +1665,25 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   }
 
                   isPushRegistering = true;
+                  var storedKey = null;
+                  try { storedKey = localStorage.getItem('push_vapid_public_key'); } catch (e) {}
 
                   return navigator.serviceWorker.register('/sw.js', { scope: '/' })
                         .then(function(reg) {
                               return reg.pushManager.getSubscription().then(function(existingSub) {
-                                    if (existingSub) {
+                                    if (existingSub && storedKey === publicKey) {
                                           return existingSub;
+                                    }
+
+                                    if (existingSub) {
+                                          // La clé VAPID a changé depuis cet abonnement (ex: régénération serveur) :
+                                          // l'ancien abonnement est devenu invalide, il faut le renouveler.
+                                          return existingSub.unsubscribe().then(function() {
+                                                return reg.pushManager.subscribe({
+                                                      userVisibleOnly: true,
+                                                      applicationServerKey: urlBase64ToUint8Array(publicKey)
+                                                });
+                                          });
                                     }
 
                                     return reg.pushManager.subscribe({
@@ -1685,7 +1698,9 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify(payload)
-                              }, PUSH_FETCH_TIMEOUT_MS);
+                              }, PUSH_FETCH_TIMEOUT_MS).then(function() {
+                                    try { localStorage.setItem('push_vapid_public_key', publicKey); } catch (e) {}
+                              });
                         })
                         .then(function() {
                               isPushRegistering = false;

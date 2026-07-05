@@ -154,6 +154,31 @@ class Order
         return true;
     }
 
+    /**
+     * Transfère les commandes non finalisées (pas encore livrées/annulées) d'un
+     * assistant vers son remplaçant pour un produit donné — utilisé quand l'admin
+     * change l'assistant assigné à un produit pour un pays.
+     */
+    public function reassignPendingOrders(int $productId, int $oldManagerId, int $newManagerId): int
+    {
+        $sql = "UPDATE orders
+            SET manager_id = :new_manager_id,
+                updated_at = :updated_at
+            WHERE product_id = :product_id
+              AND manager_id = :old_manager_id
+              AND newstat NOT IN ('deliver', 'canceled')";
+
+        $req = $this->bd->prepare($sql);
+        $req->execute([
+            'new_manager_id' => $newManagerId,
+            'updated_at' => date('Y-m-d H:i:s'),
+            'product_id' => $productId,
+            'old_manager_id' => $oldManagerId,
+        ]);
+
+        return $req->rowCount();
+    }
+
     public function getOrdersByUserId($userId)
     {
         $sql = "

@@ -5,6 +5,7 @@ require("../../vendor/autoload.php");
 use src\Connectbd;
 use src\Product;
 use src\Pack;
+use src\Order;
 
 $cnx = Connectbd::getConnection();
 $manager = new Product($cnx);
@@ -349,21 +350,53 @@ switch ($action) {
                 
                 // Mettre à jour les managers
                 if (isset($_POST['manager_ids']) && is_array($_POST['manager_ids'])) {
-                    // Récupérer les managers actuels
+                    // Récupérer les managers actuels (avec leur pays, pour la réattribution des commandes en cours)
                     $currentManagers = $manager->getProductManagers($productId);
                     $currentManagerIds = array_column($currentManagers, 'id');
-                    
+                    $newManagerIds = array_map('intval', $_POST['manager_ids']);
+
+                    $removedManagerIds = array_filter($currentManagerIds, fn($id) => !in_array($id, $newManagerIds));
+                    $addedManagerIds = array_filter($newManagerIds, fn($id) => !in_array($id, $currentManagerIds));
+
                     // Supprimer les managers qui ne sont plus sélectionnés
-                    foreach ($currentManagerIds as $managerId) {
-                        if (!in_array($managerId, $_POST['manager_ids'])) {
-                            $manager->removeProductManager($productId, $managerId);
-                        }
+                    foreach ($removedManagerIds as $managerId) {
+                        $manager->removeProductManager($productId, $managerId);
                     }
-                    
+
                     // Ajouter les nouveaux managers
-                    foreach ($_POST['manager_ids'] as $managerId) {
-                        if (!in_array($managerId, $currentManagerIds)) {
-                            $manager->addProductManager($productId, intval($managerId));
+                    foreach ($addedManagerIds as $managerId) {
+                        $manager->addProductManager($productId, $managerId);
+                    }
+
+                    // Réattribuer les commandes pas encore finalisées (livrées/annulées) d'un
+                    // assistant retiré vers son remplaçant du même pays : sans ça, ces commandes
+                    // restent assignées à un assistant qui n'a plus le produit et n'apparaissent
+                    // plus dans la file de personne tant qu'une nouvelle commande n'arrive pas.
+                    if (!empty($removedManagerIds) && !empty($addedManagerIds)) {
+                        $countryByManagerId = [];
+                        foreach ($currentManagers as $cm) {
+                            $countryByManagerId[(int)$cm['id']] = $cm['country_code'] ?? null;
+                        }
+                        $stmtManagerCountry = $cnx->prepare(
+                            "SELECT c.code AS country_code FROM users u LEFT JOIN countries c ON u.country = c.id WHERE u.id = :id"
+                        );
+                        foreach ($addedManagerIds as $newManagerId) {
+                            $stmtManagerCountry->execute(['id' => $newManagerId]);
+                            $countryByManagerId[$newManagerId] = $stmtManagerCountry->fetchColumn() ?: null;
+                        }
+
+                        $orderManager = new Order($cnx);
+                        foreach ($removedManagerIds as $oldManagerId) {
+                            $oldCountry = $countryByManagerId[$oldManagerId] ?? null;
+                            if (!$oldCountry) {
+                                continue;
+                            }
+                            foreach ($addedManagerIds as $newManagerId) {
+                                if (($countryByManagerId[$newManagerId] ?? null) === $oldCountry) {
+                                    $orderManager->reassignPendingOrders($productId, $oldManagerId, $newManagerId);
+                                    break;
+                                }
+                            }
                         }
                     }
                 }

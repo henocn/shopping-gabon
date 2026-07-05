@@ -82,10 +82,19 @@ class PushNotification
         }
 
         foreach ($webPush->flush() as $report) {
-            if (!$report->isSuccess()) {
-                // Optionnel : supprimer l’abonnement en cas d’erreur 410/404
+            if (!$report->isSuccess() && $report->isSubscriptionExpired()) {
+                $this->deleteSubscription($report->getEndpoint());
             }
         }
+    }
+
+    /**
+     * Supprime un abonnement push devenu invalide (410/404, ou clé VAPID obsolète).
+     */
+    private function deleteSubscription(string $endpoint): void
+    {
+        $stmt = $this->db->prepare("DELETE FROM push_subscriptions WHERE endpoint = :endpoint");
+        $stmt->execute(['endpoint' => $endpoint]);
     }
 
     /**

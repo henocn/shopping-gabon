@@ -71,14 +71,8 @@ class FacebookCAPI
         array $browserData = [],
         string $currency = 'XOF'
     ): array {
-        $eventTime = time();
-
-        // Construire les user_data hashées
-        $userData = $this->buildUserData($clientData, $browserData);
-
         // Construire les custom_data
         $customData = [
-            'currency' => $currency,
             'value' => (float)($orderData['total_price'] ?? 0),
             'content_ids' => [(string)($orderData['product_id'] ?? '')],
             'content_type' => 'product',
@@ -98,29 +92,52 @@ class FacebookCAPI
             $customData['contents'][0]['id'] = (string)$orderData['pack_id'];
         }
 
-        // Construire le payload
+        return $this->sendEvent('Purchase', $customData, $clientData, $eventId, $browserData, $currency);
+    }
+
+    /**
+     * Envoie un événement générique (PageView, ViewContent, InitiateCheckout, ...)
+     * à l'API Graph de Facebook. Utilisé à la fois par sendPurchaseEvent() et par
+     * le relais des événements navigateur (capi-relay.php).
+     *
+     * @param array $customData Données spécifiques à l'événement (content_ids, value, ...)
+     * @param array $clientData Données client (client_name, client_phone, client_country) — vide pour les events pré-achat
+     * @param array $browserData Données navigateur (_fbp, _fbc, user_agent, ip, source_url)
+     * @return array Résultats de l'envoi pour chaque pixel
+     */
+    public function sendEvent(
+        string $eventName,
+        array $customData,
+        array $clientData,
+        string $eventId,
+        array $browserData = [],
+        string $currency = 'XOF',
+        ?string $eventSourceUrl = null
+    ): array {
+        $userData = $this->buildUserData($clientData, $browserData);
+
+        if (!isset($customData['currency'])) {
+            $customData['currency'] = $currency;
+        }
+
         $eventPayload = [
-            'event_name' => 'Purchase',
-            'event_time' => $eventTime,
+            'event_name' => $eventName,
+            'event_time' => time(),
             'event_id' => $eventId,
-            'event_source_url' => $browserData['source_url'] ?? '',
+            'event_source_url' => $eventSourceUrl ?? ($browserData['source_url'] ?? ''),
             'action_source' => 'website',
             'user_data' => $userData,
             'custom_data' => $customData,
         ];
 
-        // Supprimer les clés vides
         if (empty($eventPayload['event_source_url'])) {
             unset($eventPayload['event_source_url']);
         }
 
-        // Envoyer à chaque pixel avec son token spécifique
-        $results = [];
-        foreach ($this->pixelTokens as $pixelId => $token) {
-            $results[$pixelId] = $this->sendEvent($pixelId, $token, $eventPayload);
-        }
-
-        return $results;
+        // Envoyer à tous les pixels en parallèle : le temps total est borné par le
+        // pixel le plus lent, pas par la somme de tous (important dès qu'il y a
+        // plus de 2-3 pixels, sinon un Purchase peut bloquer la commande plusieurs secondes).
+        return $this->dispatchToAllPixels($eventPayload);
     }
 
     /**
@@ -226,19 +243,60 @@ class FacebookCAPI
     }
 
     /**
-     * Envoie un événement à l'API Graph de Facebook via cURL.
+     * Envoie l'événement à tous les pixels configurés EN PARALLÈLE via curl_multi.
+     * Le temps total est borné par le pixel le plus lent, pas par la somme de tous —
+     * indispensable dès qu'il y a plus de 2-3 pixels pour ne pas ralentir la commande.
      *
-     * @param string $pixelId ID du pixel/dataset
-     * @param string $token Token d'accès spécifique au pixel
-     * @param array $eventPayload Données de l'événement
-     * @return array{success: bool, response?: string, error?: string}
+     * @return array<string, array{success: bool, response?: string, error?: string}>
      */
-    private function sendEvent(string $pixelId, string $token, array $eventPayload): array
+    private function dispatchToAllPixels(array $eventPayload): array
     {
-        if (empty($token)) {
-            return ['success' => false, 'error' => 'Token manquant pour ce pixel'];
+        $results = [];
+        $handles = [];
+        $multiHandle = curl_multi_init();
+
+        try {
+            foreach ($this->pixelTokens as $pixelId => $token) {
+                if (empty($token)) {
+                    $results[$pixelId] = ['success' => false, 'error' => 'Token manquant pour ce pixel'];
+                    continue;
+                }
+                $ch = $this->buildCurlHandle($pixelId, $token, $eventPayload);
+                curl_multi_add_handle($multiHandle, $ch);
+                $handles[$pixelId] = $ch;
+            }
+
+            $running = null;
+            do {
+                $status = curl_multi_exec($multiHandle, $running);
+                if ($running > 0) {
+                    curl_multi_select($multiHandle, 1.0);
+                }
+            } while ($running > 0 && $status === CURLM_OK);
+
+            foreach ($handles as $pixelId => $ch) {
+                $results[$pixelId] = $this->parseCurlResult($ch, $pixelId);
+                curl_multi_remove_handle($multiHandle, $ch);
+                curl_close($ch);
+            }
+        } catch (\Throwable $e) {
+            error_log('[FacebookCAPI] Exception dispatch parallèle: ' . $e->getMessage());
+            foreach ($handles as $pixelId => $ch) {
+                if (!isset($results[$pixelId])) {
+                    $results[$pixelId] = ['success' => false, 'error' => $e->getMessage()];
+                }
+                curl_multi_remove_handle($multiHandle, $ch);
+                curl_close($ch);
+            }
+        } finally {
+            curl_multi_close($multiHandle);
         }
 
+        return $results;
+    }
+
+    private function buildCurlHandle(string $pixelId, string $token, array $eventPayload)
+    {
         $url = self::BASE_URL . '/' . self::API_VERSION . '/' . $pixelId . '/events';
 
         $postData = [
@@ -251,56 +309,56 @@ class FacebookCAPI
             $postData['test_event_code'] = $this->testEventCode;
         }
 
-        try {
-            $ch = curl_init();
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => http_build_query($postData),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => self::TIMEOUT,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/x-www-form-urlencoded',
+            ],
+        ]);
 
-            curl_setopt_array($ch, [
-                CURLOPT_URL => $url,
-                CURLOPT_POST => true,
-                CURLOPT_POSTFIELDS => http_build_query($postData),
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT => self::TIMEOUT,
-                CURLOPT_CONNECTTIMEOUT => 3,
-                CURLOPT_SSL_VERIFYPEER => true,
-                CURLOPT_HTTPHEADER => [
-                    'Content-Type: application/x-www-form-urlencoded',
-                ],
-            ]);
+        return $ch;
+    }
 
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $error = curl_error($ch);
+    /**
+     * @return array{success: bool, response?: string, error?: string}
+     */
+    private function parseCurlResult($ch, string $pixelId): array
+    {
+        $response = curl_multi_getcontent($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
 
-            curl_close($ch);
-
-            if ($error) {
-                error_log("[FacebookCAPI] cURL error pour pixel $pixelId: $error");
-                return ['success' => false, 'error' => $error];
-            }
-
-            $decoded = json_decode($response, true);
-
-            if ($httpCode >= 200 && $httpCode < 300) {
-                error_log(
-                    "[FacebookCAPI] Purchase OK pour pixel $pixelId, events_received="
-                    . (string)($decoded['events_received'] ?? 0)
-                );
-
-                return [
-                    'success' => true,
-                    'response' => $decoded,
-                    'events_received' => $decoded['events_received'] ?? 0,
-                ];
-            }
-
-            $errorMessage = $decoded['error']['message'] ?? 'HTTP ' . $httpCode;
-            error_log("[FacebookCAPI] Erreur API pour pixel $pixelId: $errorMessage");
-
-            return ['success' => false, 'error' => $errorMessage, 'http_code' => $httpCode];
-        } catch (\Throwable $e) {
-            error_log("[FacebookCAPI] Exception pour pixel $pixelId: " . $e->getMessage());
-            return ['success' => false, 'error' => $e->getMessage()];
+        if ($error) {
+            error_log("[FacebookCAPI] cURL error pour pixel $pixelId: $error");
+            return ['success' => false, 'error' => $error];
         }
+
+        $decoded = json_decode($response, true);
+
+        if ($httpCode >= 200 && $httpCode < 300) {
+            error_log(
+                "[FacebookCAPI] Event OK pour pixel $pixelId, events_received="
+                . (string)($decoded['events_received'] ?? 0)
+            );
+
+            return [
+                'success' => true,
+                'response' => $decoded,
+                'events_received' => $decoded['events_received'] ?? 0,
+            ];
+        }
+
+        $errorMessage = $decoded['error']['message'] ?? 'HTTP ' . $httpCode;
+        error_log("[FacebookCAPI] Erreur API pour pixel $pixelId: $errorMessage");
+
+        return ['success' => false, 'error' => $errorMessage, 'http_code' => $httpCode];
     }
 
     /**
@@ -308,28 +366,6 @@ class FacebookCAPI
      */
     private function loadConfig(): array
     {
-        $envFile = __DIR__ . '/.env';
-
-        if (!file_exists($envFile)) {
-            return [];
-        }
-
-        $ini = parse_ini_file($envFile, true);
-        if (!$ini) {
-            return [];
-        }
-
-        $config = [];
-        
-        if (isset($ini['facebook'])) {
-            $config['test_mode'] = filter_var($ini['facebook']['test_mode'] ?? false, FILTER_VALIDATE_BOOLEAN);
-            $config['test_event_code'] = $ini['facebook']['test_event_code'] ?? null;
-        }
-
-        if (isset($ini['facebook_pixels'])) {
-            $config['pixels'] = $ini['facebook_pixels'];
-        }
-
-        return $config;
+        return FacebookTrackingConfig::getCapiConfig();
     }
 }
