@@ -9,12 +9,16 @@ checkIsActive($_SESSION['user_id']);
 use src\Connectbd;
 use src\User;
 use src\Country;
+use src\Product;
+use src\Order;
 
 $cnx = Connectbd::getConnection();
 
 $user = new User($cnx);
 $country = new Country($cnx);
 $countries = $country->getAll();
+$productManager = new Product($cnx);
+$orderManager = new Order($cnx);
 
 $users = $user->getAllUsers();
 
@@ -124,6 +128,17 @@ $users = $user->getAllUsers();
                             continue;
                         }
                     ?>
+                        <?php
+                            $assignedProductsCount = $productManager->countProductsByManager((int) $user['id']);
+                            $pendingOrdersCount = $orderManager->countPendingOrdersByManager((int) $user['id']);
+                            $deleteWarning = "Supprimer cet utilisateur est irréversible.";
+                            if ($assignedProductsCount > 0 || $pendingOrdersCount > 0) {
+                                $deleteWarning .= " Il est assigné à {$assignedProductsCount} produit(s) — il en sera retiré. ";
+                                if ($pendingOrdersCount > 0) {
+                                    $deleteWarning .= "{$pendingOrdersCount} commande(s) en cours lui sont assignées — elles seront transférées à l'administrateur.";
+                                }
+                            }
+                        ?>
                         <tr class="<?php echo $user['is_active'] == 1 ? 'status-active' : 'status-inactive'; ?>">
                             <td class="text-center"><?php echo $user['id']; ?></td>
                             <td>
@@ -147,13 +162,42 @@ $users = $user->getAllUsers();
                                         <i class='bx bxs-user-x' style="font-size: 1.5rem;" title="Suspend"></i>
                                     </button>
                                 </form>
-                                <form action="save.php" method="post" class="d-inline form-delete-user" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.');">
+                                <button type="button" class="btn btn-link p-0" style="color: var(--purple); padding: 1rem; border: 1px solid var(--purple);" data-bs-toggle="modal" data-bs-target="#resetPasswordModal<?php echo $user['id']; ?>" title="Réinitialiser le mot de passe">
+                                    <i class='bx bxs-key' style="font-size: 1.5rem;"></i>
+                                </button>
+                                <form action="save.php" method="post" class="d-inline form-delete-user" data-warning="<?php echo htmlspecialchars($deleteWarning, ENT_QUOTES); ?>">
                                     <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
                                     <input type="hidden" name="validate" value="delete">
                                     <button type="submit" class="btn btn-link p-0" style="color: var(--primary); padding: 1rem; border: 1px solid var(--primary);">
                                         <i class='bx bxs-trash' style="font-size: 1.5rem;" title="Supprimer"></i>
                                     </button>
                                 </form>
+
+                                <!-- Modal Réinitialisation mot de passe -->
+                                <div class="modal fade" id="resetPasswordModal<?php echo $user['id']; ?>" tabindex="-1">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">
+                                                    <i class='bx bxs-key'></i> Réinitialiser le mot de passe
+                                                </h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form action="save.php" method="post">
+                                                <div class="modal-body">
+                                                    <p class="text-muted">Nouveau mot de passe pour <strong><?php echo htmlspecialchars($user['name']); ?></strong> :</p>
+                                                    <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
+                                                    <input type="hidden" name="validate" value="admin_reset_password">
+                                                    <input type="password" class="form-control" name="new_password" minlength="6" required placeholder="Nouveau mot de passe">
+                                                </div>
+                                                <div class="modal-footer border-0">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                                                    <button type="submit" class="btn btn-order-primary">Réinitialiser</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -166,6 +210,16 @@ $users = $user->getAllUsers();
     <?php include '../../includes/footer.php'; ?>
 
     <script src="../../assets/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.querySelectorAll('.form-delete-user').forEach(function(form) {
+            form.addEventListener('submit', function(e) {
+                const warning = form.getAttribute('data-warning') || 'Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.';
+                if (!confirm(warning)) {
+                    e.preventDefault();
+                }
+            });
+        });
+    </script>
 </body>
 
 </html>

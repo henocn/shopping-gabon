@@ -182,7 +182,7 @@ $canceledOrders = $orderObj->getOrdersByStatus('canceled');*/
                 <form id="cleanupForm">
                     <div class="modal-body">
                         <p class="text-muted mb-3">
-                            Supprimez les commandes anciennement créées qui ne sont pas en cours de traitement ou livrées.
+                            Supprimez les commandes anciennement créées, selon les statuts que vous choisissez ci-dessous.
                         </p>
                         <div class="mb-3">
                             <label for="daysInput" class="form-label fw-bold">Supprimer les commandes créées avant :</label>
@@ -190,13 +190,32 @@ $canceledOrders = $orderObj->getOrdersByStatus('canceled');*/
                                 <input type="number" class="form-control" id="daysInput" name="days_ago" value="30" min="1" max="365" required>
                                 <span class="input-group-text">jours</span>
                             </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Statuts à inclure :</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="statuses[]" value="new,remind" id="statusToProcess" checked>
+                                <label class="form-check-label" for="statusToProcess">À traiter</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="statuses[]" value="unreachable" id="statusUnreachable" checked>
+                                <label class="form-check-label" for="statusUnreachable">Injoignable</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="statuses[]" value="processing" id="statusProcessing">
+                                <label class="form-check-label" for="statusProcessing">Programmer</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="statuses[]" value="canceled" id="statusCanceled" checked>
+                                <label class="form-check-label" for="statusCanceled">Annulé</label>
+                            </div>
                             <small class="text-muted d-block mt-2">
-                                Les commandes en cours (processing) et livrées (deliver) ne seront jamais supprimées.
+                                Les commandes livrées ne sont jamais supprimables — cette option n'apparaît pas ici.
                             </small>
                         </div>
                         <div class="alert alert-info" role="alert">
                             <i class='bx bx-info-circle me-2'></i>
-                            <strong>Exemple :</strong> Une valeur de 20 supprimera les commandes créées avant 20 jours à partir d'aujourd'hui.
+                            <strong>Exemple :</strong> Une valeur de 20 supprimera les commandes créées avant 20 jours, pour les statuts cochés.
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -220,12 +239,21 @@ $canceledOrders = $orderObj->getOrdersByStatus('canceled');*/
             e.preventDefault();
             
             const daysAgo = document.getElementById('daysInput').value;
+            const checkedStatuses = Array.from(this.querySelectorAll('input[name="statuses[]"]:checked'))
+                .map(function(el) { return el.value; })
+                .join(',');
+
+            if (!checkedStatuses) {
+                alert('Choisissez au moins un statut à supprimer.');
+                return;
+            }
+
             const btn = this.querySelector('button[type="submit"]');
             const originalText = btn.innerHTML;
-            
+
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Traitement...';
-            
+
             try {
                 const response = await fetch('cleanup-orders.php', {
                     method: 'POST',
@@ -233,7 +261,8 @@ $canceledOrders = $orderObj->getOrdersByStatus('canceled');*/
                         'Content-Type': 'application/x-www-form-urlencoded'
                     },
                     body: new window.URLSearchParams({
-                        days_ago: daysAgo
+                        days_ago: daysAgo,
+                        statuses: checkedStatuses
                     })
                 });
                 

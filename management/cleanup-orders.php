@@ -25,19 +25,39 @@ if ($daysAgo === null || $daysAgo < 1 || $daysAgo > 365) {
     exit;
 }
 
+// Liste blanche stricte : 'deliver' n'y figure jamais, ces commandes ne sont jamais supprimables.
+const ALLOWED_STATUSES = ['new', 'remind', 'unreachable', 'processing', 'canceled'];
+
+$requestedStatuses = isset($_POST['statuses']) ? explode(',', (string) $_POST['statuses']) : [];
+$statuses = array_values(array_intersect(array_map('trim', $requestedStatuses), ALLOWED_STATUSES));
+
+if (empty($statuses)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Aucun statut valide sélectionné.']);
+    exit;
+}
+
 try {
     $cnx = Connectbd::getConnection();
 
+    $placeholders = [];
+    $params = [':days' => $daysAgo];
+    foreach ($statuses as $index => $status) {
+        $key = ':status_' . $index;
+        $placeholders[] = $key;
+        $params[$key] = $status;
+    }
+
     // Préparation de la requête sécurisée
     $sql = "
-        DELETE FROM orders 
-        WHERE created_at < DATE_SUB(NOW(), INTERVAL :days DAY) 
-          AND newstat NOT IN ('deliver', 'processing')
+        DELETE FROM orders
+        WHERE created_at < DATE_SUB(NOW(), INTERVAL :days DAY)
+          AND newstat IN (" . implode(',', $placeholders) . ")
         LIMIT 10000
     ";
 
     $stmt = $cnx->prepare($sql);
-    $result = $stmt->execute([':days' => $daysAgo]);
+    $result = $stmt->execute($params);
 
     $deletedRows = $stmt->rowCount();
 

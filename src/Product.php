@@ -194,6 +194,17 @@ class Product
     }
     
     /**
+     * Nombre de produits sur lesquels cet assistant est assigné — utilisé pour
+     * avertir l'admin avant de supprimer son compte.
+     */
+    public function countProductsByManager(int $managerId): int
+    {
+        $req = $this->bd->prepare("SELECT COUNT(*) AS c FROM product_managers WHERE manager_id = :manager_id");
+        $req->execute(['manager_id' => $managerId]);
+        return (int) $req->fetch(PDO::FETCH_ASSOC)['c'];
+    }
+
+    /**
      * Retourne les managers du produit avec leur pays (code). Le pays du manager vient de users.country (code) relié à countries.
      */
     public function getProductManagers($productId)

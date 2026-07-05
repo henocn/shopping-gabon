@@ -219,4 +219,18 @@ class User
             ];
         }
     }
+
+    /**
+     * Réinitialise le mot de passe d'un utilisateur sans exiger l'ancien —
+     * réservé à l'admin (vérification d'accès à faire par l'appelant).
+     */
+    public function adminResetPassword(int $userId, string $newPassword): bool
+    {
+        $hashed = password_hash($newPassword, PASSWORD_BCRYPT, ['cost' => 12]);
+        $sql = $this->bd->prepare('UPDATE users SET password = :password WHERE id = :id');
+        return $sql->execute([
+            'password' => $hashed,
+            'id' => $userId,
+        ]);
+    }
 }

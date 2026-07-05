@@ -875,3 +875,55 @@
 .btn-liberation i {
   font-size: 1.1rem;
 }
+
+/* ==========================================================================
+   Commandes — tableau responsive sur mobile (scroll horizontal amélioré,
+   le tableau reste un tableau : pas de conversion en cartes).
+   ========================================================================== */
+.table-responsive {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+@media (max-width: 768px) {
+  /* Colonne Client "figée" à gauche : garde le repère visuel pendant le scroll */
+  #orders-table th:nth-child(2),
+  #orders-table td:nth-child(2),
+  #orders-delivered-table th:nth-child(2),
+  #orders-delivered-table td:nth-child(2) {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: #fff;
+    box-shadow: 2px 0 4px rgba(15, 23, 42, .06);
+  }
+
+  #orders-table thead th:nth-child(2),
+  #orders-delivered-table thead th:nth-child(2) {
+    z-index: 3;
+    background: #0c1a2c;
+  }
+
+  #orders-table,
+  #orders-delivered-table {
+    font-size: 0.82rem;
+  }
+
+  #orders-table th,
+  #orders-table td,
+  #orders-delivered-table th,
+  #orders-delivered-table td {
+    padding: 0.45rem 0.5rem;
+    white-space: nowrap;
+  }
+
+  #orders-table .order-action-group {
+    flex-direction: row;
+  }
+
+  #orders-table .order-action-group .btn,
+  #orders-table .open-order-modal-btn {
+    padding: 0.35rem 0.5rem;
+  }
+}
+

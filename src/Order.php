@@ -179,6 +179,39 @@ class Order
         return $req->rowCount();
     }
 
+    /**
+     * Nombre de commandes non finalisées (ni livrées ni annulées) assignées à cet
+     * assistant — utilisé pour avertir l'admin avant de supprimer un compte.
+     */
+    public function countPendingOrdersByManager(int $managerId): int
+    {
+        $sql = "SELECT COUNT(*) AS c FROM orders WHERE manager_id = :manager_id AND newstat NOT IN ('deliver', 'canceled')";
+        $req = $this->bd->prepare($sql);
+        $req->execute(['manager_id' => $managerId]);
+        return (int) $req->fetch(PDO::FETCH_ASSOC)['c'];
+    }
+
+    /**
+     * Retire un assistant de ses commandes non finalisées (manager_id = 0, pool
+     * "non assigné" visible par l'admin) — utilisé avant de supprimer son compte.
+     */
+    public function unassignManager(int $managerId): int
+    {
+        $sql = "UPDATE orders
+            SET manager_id = 0,
+                updated_at = :updated_at
+            WHERE manager_id = :manager_id
+              AND newstat NOT IN ('deliver', 'canceled')";
+
+        $req = $this->bd->prepare($sql);
+        $req->execute([
+            'updated_at' => date('Y-m-d H:i:s'),
+            'manager_id' => $managerId,
+        ]);
+
+        return $req->rowCount();
+    }
+
     public function getOrdersByUserId($userId)
     {
         $sql = "
@@ -222,7 +255,7 @@ class Order
         return $req->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function getOrdersByStatuses(array $statuses)
+    public function getOrdersByStatuses(array $statuses, ?int $limit = null, int $offset = 0)
     {
         if (empty($statuses)) {
             return [];
@@ -270,6 +303,7 @@ class Order
         LEFT JOIN product_packs pp ON pp.id = o.pack_id
         WHERE o.newstat IN (" . implode(',', $placeholders) . ")
         ORDER BY o.id DESC
+        " . ($limit !== null ? "LIMIT " . (int)$limit . " OFFSET " . (int)$offset : "") . "
     ";
 
         $req = $this->bd->prepare($sql);
@@ -277,7 +311,7 @@ class Order
         return $req->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function getOrdersByStatusesAndUserId(array $statuses, int $userId)
+    public function getOrdersByStatusesAndUserId(array $statuses, int $userId, ?int $limit = null, int $offset = 0)
     {
         if (empty($statuses)) {
             return [];
@@ -326,11 +360,60 @@ class Order
         WHERE o.newstat IN (" . implode(',', $placeholders) . ")
           AND o.manager_id = :manager_id
         ORDER BY o.id DESC
+        " . ($limit !== null ? "LIMIT " . (int)$limit . " OFFSET " . (int)$offset : "") . "
     ";
 
         $req = $this->bd->prepare($sql);
         $req->execute($params);
         return $req->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Détail complet d'une commande (avec jointures produit/assistant/pays) pour
+     * alimenter la modale d'édition chargée à la demande côté admin.
+     */
+    public function getOrderDetailsById(int $id): ?array
+    {
+        $sql = "
+        SELECT
+            o.id AS order_id,
+            o.product_id,
+            o.pack_id,
+            o.quantity,
+            o.purchase_price,
+            o.total_price,
+            o.client_name,
+            o.client_country,
+            o.client_phone,
+            o.client_adress,
+            o.client_note,
+            o.manager_note,
+            o.manager_id,
+            o.newstat,
+            o.created_at,
+            o.updated_at,
+            COALESCE(pc.selling_price, 0) AS unit_price,
+            COALESCE(p.name, 'Produit supprimé') AS product_name,
+            COALESCE(pp.name, '') AS pack_name,
+            COALESCE(u.name, '—') AS assistant_name,
+            uc.name AS assistant_country_name,
+            uc.code AS assistant_country_code
+        FROM orders o
+        LEFT JOIN products p ON p.id = o.product_id
+        LEFT JOIN users u ON u.id = o.manager_id
+        LEFT JOIN countries uc ON (u.country = uc.code OR u.country = CAST(uc.id AS CHAR))
+        LEFT JOIN product_countries pc
+            ON pc.product_id = p.id
+           AND pc.country_id = o.client_country
+        LEFT JOIN product_packs pp ON pp.id = o.pack_id
+        WHERE o.id = :id
+        LIMIT 1
+    ";
+
+        $req = $this->bd->prepare($sql);
+        $req->execute(['id' => $id]);
+        $order = $req->fetch(PDO::FETCH_ASSOC);
+        return $order ?: null;
     }
 
 

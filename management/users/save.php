@@ -5,9 +5,11 @@ session_start();
 // ---------------------------------------------------------------------------//
 
 require("../../vendor/autoload.php");
+require("../../utils/middleware.php");
 
 use src\Connectbd;
 use src\User;
+use src\Order;
 
 $cnx = Connectbd::getConnection();
 
@@ -114,10 +116,18 @@ if (isset($_POST['validate'])) {
             break;
 
         case 'delete':
+            checkAdminAccess($_SESSION['user_id'] ?? 0);
+
             if (
                 isset($_POST['user_id']) && is_numeric($_POST['user_id'])
             ) {
                 $user_id = (int)$_POST['user_id'];
+
+                // Libère les commandes en cours de cet assistant (pool "non assigné",
+                // visible par l'admin) avant de supprimer son compte — sinon elles
+                // restent orphelines et invisibles pour tout le monde.
+                $orderManager = new Order($cnx);
+                $orderManager->unassignManager($user_id);
 
                 if ($manager->deleteUser($user_id)) {
                     redirect('index.php', "Utilisateur supprimé avec succès !");
@@ -126,6 +136,26 @@ if (isset($_POST['validate'])) {
                 }
             } else {
                 redirect('index.php', "Données invalides pour la suppression de l'utilisateur.");
+            }
+            break;
+
+        case 'admin_reset_password':
+            checkAdminAccess($_SESSION['user_id'] ?? 0);
+
+            if (
+                isset($_POST['user_id']) && is_numeric($_POST['user_id']) &&
+                isset($_POST['new_password']) && strlen($_POST['new_password']) >= 6
+            ) {
+                $user_id = (int)$_POST['user_id'];
+                $new_password = $_POST['new_password'];
+
+                if ($manager->adminResetPassword($user_id, $new_password)) {
+                    redirect('index.php', "Mot de passe réinitialisé avec succès !");
+                } else {
+                    redirect('index.php', "Erreur lors de la réinitialisation du mot de passe.");
+                }
+            } else {
+                redirect('index.php', "Mot de passe invalide (minimum 6 caractères).");
             }
             break;
 

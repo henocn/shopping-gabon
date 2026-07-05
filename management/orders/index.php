@@ -11,6 +11,8 @@ use src\Order;
 $cnx = Connectbd::getConnection();
 $orderManager = new Order($cnx);
 
+const ORDERS_PAGE_SIZE = 200;
+
 $groupedOrders = [
       'to-process' => [],
       'unreachable' => [],
@@ -18,27 +20,31 @@ $groupedOrders = [
       'delivered' => []
 ];
 
-$ordersForModals = [];
+// Indique, par onglet, s'il reste des commandes au-delà des ORDERS_PAGE_SIZE
+// premières chargées ici — pilote l'activation du scroll infini côté JS.
+$hasMoreByTab = [
+      'to-process' => false,
+      'unreachable' => false,
+      'processing' => false,
+];
 
 if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
       if ((int)$_SESSION['role'] === 1) {
-            $groupedOrders['to-process'] = $orderManager->getOrdersByStatuses(['new', 'remind']);
-            $groupedOrders['unreachable'] = $orderManager->getOrdersByStatuses(['unreachable']);
-            $groupedOrders['processing'] = $orderManager->getOrdersByStatuses(['processing']);
+            $groupedOrders['to-process'] = $orderManager->getOrdersByStatuses(['new', 'remind'], ORDERS_PAGE_SIZE);
+            $groupedOrders['unreachable'] = $orderManager->getOrdersByStatuses(['unreachable'], ORDERS_PAGE_SIZE);
+            $groupedOrders['processing'] = $orderManager->getOrdersByStatuses(['processing'], ORDERS_PAGE_SIZE);
             $groupedOrders['delivered'] = $orderManager->getOrdersToDay();
       } else {
             $managerId = (int)$_SESSION['user_id'];
-            $groupedOrders['to-process'] = $orderManager->getOrdersByStatusesAndUserId(['new', 'remind'], $managerId);
-            $groupedOrders['unreachable'] = $orderManager->getOrdersByStatusesAndUserId(['unreachable'], $managerId);
-            $groupedOrders['processing'] = $orderManager->getOrdersByStatusesAndUserId(['processing'], $managerId);
+            $groupedOrders['to-process'] = $orderManager->getOrdersByStatusesAndUserId(['new', 'remind'], $managerId, ORDERS_PAGE_SIZE);
+            $groupedOrders['unreachable'] = $orderManager->getOrdersByStatusesAndUserId(['unreachable'], $managerId, ORDERS_PAGE_SIZE);
+            $groupedOrders['processing'] = $orderManager->getOrdersByStatusesAndUserId(['processing'], $managerId, ORDERS_PAGE_SIZE);
             $groupedOrders['delivered'] = $orderManager->getOrdersToDayByUserId($managerId);
       }
 
-      $ordersForModals = array_merge(
-            $groupedOrders['to-process'],
-            $groupedOrders['unreachable'],
-            $groupedOrders['processing']
-      );
+      foreach (['to-process', 'unreachable', 'processing'] as $tabKey) {
+            $hasMoreByTab[$tabKey] = count($groupedOrders[$tabKey]) === ORDERS_PAGE_SIZE;
+      }
 }
 ?>
 
@@ -220,9 +226,8 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                                     </div>
                                                                               <?php else: ?>
                                                                                     <!-- Bouton modal pour traiter la commande (autres statuts) -->
-                                                                                    <button class="btn btn-order-primary btn-sm" type="button"
-                                                                                          data-bs-toggle="modal"
-                                                                                          data-bs-target="#orderModal<?= (int)$order['order_id'] ?>"
+                                                                                    <button class="btn btn-order-primary btn-sm open-order-modal-btn" type="button"
+                                                                                          data-order-id="<?= (int)$order['order_id'] ?>"
                                                                                           title="Traiter"
                                                                                           aria-label="Traiter">
                                                                                           <i class='bx bx-edit-alt'></i>
@@ -232,6 +237,13 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                         <td><?= date('d/m/Y à H:i', strtotime($order['created_at'])) ?></td>
                                                                   </tr>
                                                             <?php endforeach; ?>
+                                                            <?php if ($hasMoreByTab['to-process']): ?>
+                                                                  <tr class="scroll-sentinel-row" data-scroll-sentinel="to-process">
+                                                                        <td colspan="11" class="text-center text-muted py-3">
+                                                                              <span class="spinner-border spinner-border-sm me-2"></span>Chargement...
+                                                                        </td>
+                                                                  </tr>
+                                                            <?php endif; ?>
                                                       </tbody>
                                                 </table>
                                           </div>
@@ -294,9 +306,8 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                         <td><?= number_format($order['total_price'], 0, ',', ' ') ?> F</td>
                                                                         <td class="note-cell" title="<?= htmlspecialchars($order['manager_note'] ?? '') ?>"><?= htmlspecialchars($order['manager_note'] ?? '') ?></td>
                                                                         <td>
-                                                                              <button class="btn btn-order-primary btn-sm" type="button"
-                                                                                    data-bs-toggle="modal"
-                                                                                    data-bs-target="#orderModal<?= (int)$order['order_id'] ?>"
+                                                                              <button class="btn btn-order-primary btn-sm open-order-modal-btn" type="button"
+                                                                                    data-order-id="<?= (int)$order['order_id'] ?>"
                                                                                     title="Traiter"
                                                                                     aria-label="Traiter">
                                                                                     <i class='bx bx-edit-alt'></i>
@@ -305,6 +316,13 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                         <td><?= date('d/m/Y à H:i', strtotime($order['created_at'])) ?></td>
                                                                   </tr>
                                                             <?php endforeach; ?>
+                                                            <?php if ($hasMoreByTab['unreachable']): ?>
+                                                                  <tr class="scroll-sentinel-row" data-scroll-sentinel="unreachable">
+                                                                        <td colspan="11" class="text-center text-muted py-3">
+                                                                              <span class="spinner-border spinner-border-sm me-2"></span>Chargement...
+                                                                        </td>
+                                                                  </tr>
+                                                            <?php endif; ?>
                                                       </tbody>
                                                 </table>
                                           </div>
@@ -402,6 +420,13 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                         <td><?= date('d/m/Y à H:i', strtotime($order['created_at'])) ?></td>
                                                                   </tr>
                                                             <?php endforeach; ?>
+                                                            <?php if ($hasMoreByTab['processing']): ?>
+                                                                  <tr class="scroll-sentinel-row" data-scroll-sentinel="processing">
+                                                                        <td colspan="11" class="text-center text-muted py-3">
+                                                                              <span class="spinner-border spinner-border-sm me-2"></span>Chargement...
+                                                                        </td>
+                                                                  </tr>
+                                                            <?php endif; ?>
                                                       </tbody>
                                                 </table>
                                           </div>
@@ -467,165 +492,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
 
       </main>
 
-      <div id="modals-container">
-      <?php foreach ($ordersForModals as $order): ?>
-            <?php $modalId = 'orderModal' . (int)$order['order_id']; ?>
-            <div class="modal fade" id="<?= $modalId ?>" tabindex="-1" aria-labelledby="<?= $modalId ?>Label" aria-hidden="true">
-                  <div class="modal-dialog modal-dialog-centered admin-order-modal">
-                        <div class="modal-content">
-                              <div class="modal-header py-2">
-                                    <h6 class="modal-title mb-0" id="<?= $modalId ?>Label">
-                                          <i class='bx bx-edit-alt me-1'></i>
-                                          Commande #<?= $order['order_id'] ?>
-                                    </h6>
-                                    <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal" aria-label="Fermer"></button>
-                              </div>
-                              <form action="save.php" method="POST" id="orderForm<?= $order['order_id'] ?>">
-                                    <div class="modal-body py-2">
-                                          <div class="order-modal-summary">
-                                                <div class="d-flex flex-column flex-sm-row justify-content-between gap-1">
-                                                      <span><strong><?= htmlspecialchars($order['client_name']) ?></strong> (<?= htmlspecialchars($order['client_phone']) ?>)</span>
-                                                </div>
-                                                <div class="mt-1"><span class="text-muted">Produit : <strong><?= htmlspecialchars($order['product_name']) ?></strong></span></div>
-                                          </div>
-
-                                          <div class="row g-2">
-                                                <div class="col-12 col-md-4">
-                                                      <div class="mb-2">
-                                                            <label for="modalQuantity<?= $order['order_id'] ?>" class="form-label mb-1 small fw-bold">Quantité</label>
-                                                            <input type="number" class="form-control form-control-sm" id="modalQuantity<?= $order['order_id'] ?>" name="quantity" value="<?= (int)$order['quantity'] ?>" min="1" required>
-                                                      </div>
-                                                </div>
-                                                <div class="col-12 col-md-4">
-                                                      <div class="mb-2">
-                                                            <label class="form-label mb-1 small fw-bold">Prix unitaire (FCFA)</label>
-                                                            <input type="text" class="form-control form-control-sm" value="<?= number_format($order['unit_price'] ?? 0, 0, ',', ' ') ?>" readonly>
-                                                      </div>
-                                                </div>
-                                                <div class="col-12 col-md-4">
-                                                      <div class="mb-2">
-                                                            <label for="modalTotal<?= $order['order_id'] ?>" class="form-label mb-1 small fw-bold">Prix total (FCFA)</label>
-                                                            <input type="number" class="form-control form-control-sm" id="modalTotal<?= $order['order_id'] ?>" name="total_price" value="<?= (int)$order['total_price'] ?>" min="0" required>
-                                                      </div>
-                                                </div>
-
-                                                <div class="col-12">
-                                                      <div class="mb-2">
-                                                            <label for="actionSelect<?= $order['order_id'] ?>" class="form-label mb-1 small fw-bold">Action</label>
-                                                            <select class="form-select form-select-sm" id="actionSelect<?= $order['order_id'] ?>" name="newstat" required>
-                                                                  <?php
-                                                                  $actions = [];
-                                                                  switch ($order['newstat']) {
-                                                                        case 'new':
-                                                                        case 'unreachable':
-                                                                              $actions = [
-                                                                                    ['value' => 'deliver', 'label' => 'Livrer'],
-                                                                                    ['value' => 'processing', 'label' => 'Programmer'],
-                                                                                    ['value' => 'remind', 'label' => 'Rappeler'],
-                                                                                    ['value' => 'unreachable', 'label' => 'Injoignable'],
-                                                                                    ['value' => 'canceled', 'label' => 'Annuler']
-                                                                              ];
-                                                                              break;
-                                                                        case 'remind':
-                                                                              $actions = [
-                                                                                    ['value' => 'deliver', 'label' => 'Livrer'],
-                                                                                    ['value' => 'processing', 'label' => 'Programmer'],
-                                                                                    ['value' => 'remind', 'label' => 'Rappeler'],
-                                                                                    ['value' => 'unreachable', 'label' => 'Injoignable'],
-                                                                                    ['value' => 'canceled', 'label' => 'Annuler']
-                                                                              ];
-                                                                              break;
-                                                                        case 'processing':
-                                                                              $actions = [
-                                                                                    ['value' => 'deliver', 'label' => 'Livré'],
-                                                                                    ['value' => 'canceled', 'label' => 'Annuler']
-                                                                              ];
-                                                                              break;
-                                                                  }
-                                                                  ?>
-                                                                  <option value="" selected>-- Choisir une action --</option>
-                                                                  <?php foreach ($actions as $action): ?>
-                                                                        <option name="newstat" value="<?= $action['value'] ?>">
-                                                                              <?= $action['label'] ?>
-                                                                        </option>
-                                                                  <?php endforeach; ?>
-                                                            </select>
-                                                            <div class="form-text mt-1">
-                                                                  <small class="text-muted">
-                                                                        Statut: <strong><?= ucfirst($order['newstat']) ?></strong>
-                                                                  </small>
-                                                            </div>
-                                                      </div>
-                                                </div>
-
-                                                <div class="col-12">
-                                                      <div class="mb-2">
-                                                            <label for="modalManagerNote<?= $order['order_id'] ?>" class="form-label mb-1 small fw-bold">Note manager</label>
-                                                            <textarea class="form-control form-control-sm" id="modalManagerNote<?= $order['order_id'] ?>" name="manager_note" rows="2" placeholder="Notes..."><?= htmlspecialchars($order['manager_note'] ?? '') ?></textarea>
-                                                      </div>
-                                                </div>
-                                          </div>
-                                    </div>
-                                    <div class="modal-footer py-2">
-                                          <input type="hidden" name="order_id" value="<?= $order['order_id'] ?>">
-                                          <input type="hidden" name="valider" value="update">
-                                          <input type="hidden" name="updated_at" value="<?= date('Y-m-d H:i:s') ?>">
-                                          <input type="hidden" name="delivery_fee" id="deliveryFee<?= $order['order_id'] ?>" value="0">
-                                          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">
-                                                <i class='bx bx-x me-1'></i>Annuler
-                                          </button>
-                                          <button type="button" class="btn btn-primary btn-sm" id="submitBtn<?= $order['order_id'] ?>">
-                                                <i class='bx bx-save me-1'></i>Enregistrer
-                                          </button>
-                                    </div>
-                              </form>
-                        </div>
-                  </div>
-            </div>
-      <?php endforeach; ?>
-
-      <!-- Modal pour les frais de livraison -->
-      <?php foreach ($ordersForModals as $order): ?>
-            <div class="modal fade" id="deliveryFeeModal<?= $order['order_id'] ?>" tabindex="-1" aria-labelledby="deliveryFeeModalLabel<?= $order['order_id'] ?>" aria-hidden="true">
-                  <div class="modal-dialog modal-dialog-centered">
-                        <div class="modal-content">
-                              <div class="modal-header bg-success text-white">
-                                    <h5 class="modal-title" id="deliveryFeeModalLabel<?= $order['order_id'] ?>">
-                                          <i class='bx bx-package me-2'></i>Frais de Livraison
-                                    </h5>
-                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
-                              </div>
-                              <div class="modal-body">
-                                    <p class="text-muted mb-3">Commande #<?= $order['order_id'] ?> - <?= htmlspecialchars($order['client_name']) ?></p>
-                                    <div class="mb-3">
-                                          <label for="deliveryFeeInput<?= $order['order_id'] ?>" class="form-label fw-bold">
-                                                Frais de livraison (FCFA)
-                                          </label>
-                                          <input type="number"
-                                                class="form-control form-control-lg"
-                                                id="deliveryFeeInput<?= $order['order_id'] ?>"
-                                                placeholder="Entrez les frais de livraison"
-                                                min="0"
-                                                value="0">
-                                          <div class="form-text">
-                                                <i class='bx bx-info-circle me-1'></i>
-                                                Laissez 0 si aucun frais de livraison
-                                          </div>
-                                    </div>
-                              </div>
-                              <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                                          <i class='bx bx-x me-2'></i>Annuler
-                                    </button>
-                                    <button type="button" class="btn btn-success" onclick="confirmDelivery(<?= $order['order_id'] ?>)">
-                                          <i class='bx bx-check me-2'></i>Confirmer la livraison
-                                    </button>
-                              </div>
-                        </div>
-                  </div>
-            </div>
-      <?php endforeach; ?>
-      </div>
+      <div id="modals-container"></div>
 
       <?php include '../../includes/footer.php'; ?>
 
@@ -895,7 +762,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   }
 
                   return '' +
-                  '<button class="btn btn-order-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#orderModal' + orderId + '" title="Traiter" aria-label="Traiter">' +
+                  '<button class="btn btn-order-primary btn-sm open-order-modal-btn" type="button" data-order-id="' + orderId + '" title="Traiter" aria-label="Traiter">' +
                         '<i class="bx bx-edit-alt"></i>' +
                   '</button>';
             }
@@ -1165,6 +1032,133 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   }
             }
 
+            /**
+             * Charge les données de la commande à la demande (si les modales n'existent
+             * pas encore dans le DOM) avant d'exécuter le callback — évite de pré-générer
+             * des modales pour des commandes jamais ouvertes par l'admin.
+             */
+            function ensureOrderModalsFetched(orderId, callback) {
+                  if (document.getElementById('orderModal' + orderId) && document.getElementById('deliveryFeeModal' + orderId)) {
+                        callback();
+                        return;
+                  }
+
+                  fetch('get-order.php?id=' + orderId)
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                              if (data && data.success && data.order) {
+                                    ensureOrderModals(data.order);
+                                    initOrderInteractions();
+                              }
+                              callback();
+                        })
+                        .catch(function() {
+                              callback();
+                        });
+            }
+
+            /**
+             * Ajoute une ligne de commande en fin de tableau (scroll infini) — sans
+             * pré-générer ses modales, chargées à la demande au clic (ensureOrderModalsFetched).
+             */
+            function appendOrderRowForScroll(order, tbody, sentinelRow) {
+                  const orderId = Number(order.order_id || 0);
+                  if (!orderId || document.querySelector('tr[data-order-id="' + orderId + '"]')) {
+                        return;
+                  }
+
+                  const status = String(order.newstat || 'new');
+                  const values = {
+                        quantity: String(order.quantity || 1),
+                        total_price: String(order.total_price || 0),
+                        manager_note: String(order.manager_note || ''),
+                        updated_at: String(order.updated_at || order.created_at || ''),
+                        delivery_fee: '0'
+                  };
+
+                  const row = document.createElement('tr');
+                  row.className = 'order-row ' + getRowClassByStatus(status);
+                  row.setAttribute('data-order-id', String(orderId));
+                  row.setAttribute('data-status', status);
+                  row.setAttribute('data-client', String(order.client_name || '').toLowerCase());
+                  row.setAttribute('data-phone', String(order.client_phone || ''));
+                  row.setAttribute('data-product', String(order.product_name || '').toLowerCase());
+
+                  row.innerHTML = '' +
+                        '<td>#' + orderId + '</td>' +
+                        '<td class="client-name-cell" title="' + escapeHtml(order.client_name || 'Client') + '">' + escapeHtml(order.client_name || 'Client') + '</td>' +
+                        '<td>' + escapeHtml(order.client_phone || '') + '</td>' +
+                        '<td class="note-cell" title="' + escapeHtml(order.client_adress || '') + '">' + escapeHtml((order.client_adress && String(order.client_adress).trim() !== '') ? order.client_adress : '—') + '</td>' +
+                        '<td class="note-cell" title="' + escapeHtml(order.client_note || '') + '">' + escapeHtml((order.client_note && String(order.client_note).trim() !== '') ? order.client_note : '—') + '</td>' +
+                        '<td class="product-name-cell" title="' + escapeHtml(order.product_name || 'Produit') + '">' + escapeHtml(order.product_name || 'Produit') + '</td>' +
+                        '<td>' + Number(order.quantity || 1) + '</td>' +
+                        '<td>' + formatPriceFcfa(order.total_price || 0) + '</td>' +
+                        '<td class="note-cell" title="' + escapeHtml(order.manager_note || '') + '">' + escapeHtml(order.manager_note || '') + '</td>' +
+                        '<td>' + buildActionCellHtml(orderId, status, values) + '</td>' +
+                        '<td>' + formatDateTime(order.created_at) + '</td>';
+
+                  tbody.insertBefore(row, sentinelRow);
+            }
+
+            /**
+             * Scroll infini par onglet : observe la ligne sentinelle en bas de chaque
+             * tableau paginé et charge la suite via list-orders.php quand elle devient visible.
+             */
+            function setupInfiniteScroll() {
+                  if (typeof IntersectionObserver === 'undefined') {
+                        return;
+                  }
+
+                  ['to-process', 'unreachable', 'processing'].forEach(function(tab) {
+                        const sentinelRow = document.querySelector('tr[data-scroll-sentinel="' + tab + '"]');
+                        if (!sentinelRow) {
+                              return;
+                        }
+
+                        let offset = 200;
+                        let loading = false;
+
+                        const observer = new IntersectionObserver(function(entries) {
+                              entries.forEach(function(entry) {
+                                    if (!entry.isIntersecting || loading) {
+                                          return;
+                                    }
+                                    loading = true;
+
+                                    fetch('list-orders.php?tab=' + encodeURIComponent(tab) + '&offset=' + offset)
+                                          .then(function(r) { return r.json(); })
+                                          .then(function(data) {
+                                                if (!data || !data.success) {
+                                                      sentinelRow.remove();
+                                                      observer.disconnect();
+                                                      return;
+                                                }
+
+                                                const tbody = sentinelRow.closest('tbody');
+                                                const orders = data.orders || [];
+                                                orders.forEach(function(order) {
+                                                      appendOrderRowForScroll(order, tbody, sentinelRow);
+                                                });
+                                                offset += orders.length;
+
+                                                if (!data.has_more) {
+                                                      sentinelRow.remove();
+                                                      observer.disconnect();
+                                                }
+
+                                                loading = false;
+                                                initOrderInteractions();
+                                          })
+                                          .catch(function() {
+                                                loading = false;
+                                          });
+                              });
+                        }, { rootMargin: '200px' });
+
+                        observer.observe(sentinelRow);
+                  });
+            }
+
             function addIncomingOrderToDom(order) {
                   const orderId = Number(order.order_id || 0);
                   if (!orderId) {
@@ -1400,18 +1394,43 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                               orderId: orderId
                         };
 
-                        const deliveryModalElement = document.getElementById('deliveryFeeModal' + orderId);
-                        if (deliveryModalElement) {
-                              const feeInput = document.getElementById('deliveryFeeInput' + orderId);
-                              if (feeInput) {
-                                    feeInput.value = '0';
-                                    feeInput.focus();
+                        ensureOrderModalsFetched(orderId, function() {
+                              const deliveryModalElement = document.getElementById('deliveryFeeModal' + orderId);
+                              if (deliveryModalElement) {
+                                    const feeInput = document.getElementById('deliveryFeeInput' + orderId);
+                                    if (feeInput) {
+                                          feeInput.value = '0';
+                                          feeInput.focus();
+                                    }
+                                    const existingModal = bootstrap.Modal.getInstance(deliveryModalElement);
+                                    const deliveryModal = existingModal || new bootstrap.Modal(deliveryModalElement);
+                                    deliveryModal.show();
+                                    attachDeliveryModalHandler(orderId, deliveryModalElement);
                               }
-                              const existingModal = bootstrap.Modal.getInstance(deliveryModalElement);
-                              const deliveryModal = existingModal || new bootstrap.Modal(deliveryModalElement);
-                              deliveryModal.show();
-                              attachDeliveryModalHandler(orderId, deliveryModalElement);
-                        }
+                        });
+                  });
+
+                  button.dataset.listenerAttached = '1';
+            });
+
+            document.querySelectorAll('.open-order-modal-btn').forEach(button => {
+                  if (button.dataset.listenerAttached === '1') {
+                        return;
+                  }
+
+                  button.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        const orderId = this.dataset.orderId;
+                        ensureOrderModalsFetched(orderId, function() {
+                              const modalEl = document.getElementById('orderModal' + orderId);
+                              if (modalEl) {
+                                    const existingModal = bootstrap.Modal.getInstance(modalEl);
+                                    const modal = existingModal || new bootstrap.Modal(modalEl);
+                                    modal.show();
+                              }
+                        });
                   });
 
                   button.dataset.listenerAttached = '1';
@@ -1746,6 +1765,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
 
             document.addEventListener('DOMContentLoaded', function() {
                   initOrderInteractions();
+                  setupInfiniteScroll();
                   lastOrderId = getInitialLastOrderId();
                   ensureNotificationPermission();
 
