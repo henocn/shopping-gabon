@@ -131,6 +131,8 @@ if (isset($_SESSION['fb_purchase_data'])) {
     <meta property="og:site_name" content="LUXEMARKET" />
     <meta property="og:locale" content="fr_FR" />
 
+    <link rel="icon" type="image/png" href="/assets/favicon.png">
+
     <!-- Twitter Cards -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="<?= htmlspecialchars($displayTitle); ?>" />
@@ -797,7 +799,7 @@ if (isset($_SESSION['fb_purchase_data'])) {
             }
         });
     </script>
-    
+
 </body>
 
 </html>

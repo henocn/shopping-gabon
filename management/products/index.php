@@ -29,9 +29,81 @@ $products = $product->getAllProducts();
     <link href="../../assets/css/admin.css" rel="stylesheet">
     <link href="../../assets/css/navbar.css" rel="stylesheet" />
     <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <?php include '../../includes/pwa-head.php'; ?>
+    <style>
+        .pwa-install-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 9999;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #fff;
+            padding: 12px 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+            animation: slideDown 0.3s ease-out;
+        }
+        @keyframes slideDown {
+            from { transform: translateY(-100%); }
+            to { transform: translateY(0); }
+        }
+        .pwa-install-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .pwa-install-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
+        .pwa-install-text {
+            flex: 1;
+            min-width: 0;
+            line-height: 1.3;
+        }
+        .pwa-install-text strong {
+            display: block;
+            font-size: 14px;
+        }
+        .pwa-install-text span {
+            display: block;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+        .pwa-install-content .btn-success {
+            flex-shrink: 0;
+            font-weight: 600;
+            padding: 6px 16px;
+            border-radius: 6px;
+        }
+        .pwa-install-content .btn-close {
+            flex-shrink: 0;
+            opacity: 0.7;
+            filter: brightness(0) invert(1);
+        }
+        body.pwa-banner-shown {
+            padding-top: 64px;
+        }
+    </style>
 </head>
 
 <body>
+    <div id="pwa-install-banner" class="pwa-install-banner d-none">
+        <div class="pwa-install-content">
+            <img src="/assets/icons/icon-192x192.png" alt="LUXEMARKET" class="pwa-install-icon">
+            <div class="pwa-install-text">
+                <strong>Installer l'application</strong>
+                <span>Gérez vos commandes plus rapidement</span>
+            </div>
+            <button type="button" id="pwa-install-btn" class="btn btn-sm btn-success">Installer</button>
+            <button type="button" id="pwa-install-dismiss" class="btn-close btn-close-white" aria-label="Fermer"></button>
+        </div>
+    </div>
+
     <?php include '../../includes/navbar.php'; ?>
 
     <main class="admin-main container my-4">
@@ -218,6 +290,9 @@ $products = $product->getAllProducts();
         })();
 
     </script>
+
+    <?php include '../../includes/push-notifications-init.php'; ?>
+    <?php include '../../includes/pwa-script.php'; ?>
 </body>
 
 </html>

@@ -1,55 +1,287 @@
-/* Service Worker pour les Web Push (nouvelles commandes) */
-self.addEventListener('push', function (event) {
-    var payload = { title: 'Nouvelle commande', body: "Une nouvelle commande vient d'être passée." };
-    if (event.data) {
-        // Robustesse : le payload peut être du JSON ou du texte selon l'envoi WebPush
-        try {
-            payload = event.data.json();
-        } catch (e) {
-            try {
-                // event.data.text() est asynchrone mais dans un try simple on peut tenter un fallback
-                // (si ça échoue on gardera le payload par défaut)
-                var txt = event.data.text ? event.data.text() : null;
-                if (txt && typeof txt.then === 'function') {
-                    event.waitUntil(txt.then(function (t) {
-                        payload.body = t;
-                        var nonce = payload.nonce || String(Date.now());
-                        return self.registration.showNotification(payload.title || 'Nouvelle commande', {
-                            body: payload.body || "Une nouvelle commande vient d'être passée.",
-                            tag: 'new-order-' + nonce,
-                            requireInteraction: false
-                        });
-                    }));
-                    return;
-                }
-            } catch (e2) {}
+// LUXEMARKET Admin PWA - Service Worker v4
+// Service Worker avec fetch handler ACTIF (obligatoire pour Chrome)
+
+var CACHE_NAME = 'luxemarket-admin-v6';
+
+var PRECACHE_URLS = [
+  // Pages principales management
+  '/management/dashboard.php',
+  '/management/orders/index.php',
+  '/management/orders/archive.php',
+  '/management/products/index.php',
+  '/management/products/add.php',
+  '/management/products/update.php',
+  '/management/users/index.php',
+  '/management/users/login.php',
+  '/management/gestion/index.php',
+  '/management/index.php',
+  '/management/cleanup-orders.php',
+
+  // CSS
+  '/assets/css/bootstrap.min.css',
+  '/assets/css/admin.css',
+  '/assets/css/index.css',
+  '/assets/css/navbar.css',
+  '/assets/css/login.css',
+
+  // JS
+  '/assets/js/bootstrap.bundle.min.js',
+  '/assets/js/offline-sync.js',
+
+  // Images et icones
+  '/assets/images/logo.jpg',
+  '/assets/icons/icon-192x192.png',
+  '/assets/icons/icon-512x512.png',
+
+  // Manifest
+  '/manifest.json'
+];
+
+// ============================================
+// INSTALL: Précache toutes les URLs
+// ============================================
+self.addEventListener('install', function(event) {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(function(cache) {
+      return cache.addAll(PRECACHE_URLS);
+    }).then(function() {
+      return self.skipWaiting(); // Force l'activation immédiate
+    })
+  );
+});
+
+// ============================================
+// ACTIVATE: Nettoie les anciens caches
+// ============================================
+self.addEventListener('activate', function(event) {
+  event.waitUntil(
+    caches.keys().then(function(cacheNames) {
+      return Promise.all(
+        cacheNames.map(function(name) {
+          if (name !== CACHE_NAME) {
+            return caches.delete(name);
+          }
+        })
+      );
+    }).then(function() {
+      return self.clients.claim(); // Prend le contrôle de tous les clients immédiatement
+    })
+  );
+});
+
+// ============================================
+// FETCH: Stratégie Network-First avec fallback cache
+// CE HANDLER EST OBLIGATOIRE POUR QUE CHROME GÉNÈRE UN WebAPK
+// ============================================
+self.addEventListener('fetch', function(event) {
+  var requestUrl = new URL(event.request.url);
+
+  // Ignorer les requêtes cross-origin
+  if (requestUrl.origin !== location.origin) {
+    return;
+  }
+
+  // IMPORTANT : Ignorer les requêtes non-GET (POST, PUT, DELETE, etc.) pour ne pas casser les formulaires
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
+  // Cache-first pour les assets statiques (CSS, JS, images, polices)
+  if (requestUrl.pathname.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?|woff|ttf|eot|otf)$/)) {
+    event.respondWith(
+      caches.match(event.request).then(function(cached) {
+        var fetchPromise = fetch(event.request).then(function(response) {
+          if (response && response.status === 200) {
+            var responseClone = response.clone();
+            caches.open(CACHE_NAME).then(function(cache) {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return response;
+        });
+        return cached || fetchPromise;
+      })
+    );
+    return;
+  }
+
+  // Network-first avec fallback pour les pages management
+  if (requestUrl.pathname.indexOf('/management/') === 0 || requestUrl.pathname === '/manifest.json') {
+    event.respondWith(
+      fetch(event.request).then(function(response) {
+        if (response && response.status === 200) {
+          var responseClone = response.clone();
+          caches.open(CACHE_NAME).then(function(cache) {
+            cache.put(event.request, responseClone);
+          });
         }
+        return response;
+      }).catch(function() {
+        // Fallback vers le cache
+        return caches.match(event.request).then(function(cached) {
+          // Si pas dans le cache et que c'est une page management, fallback vers dashboard
+          if (!cached && requestUrl.pathname.indexOf('/management/') === 0) {
+            return caches.match('/management/dashboard.php');
+          }
+          return cached;
+        });
+      })
+    );
+    return;
+  }
+
+  // Default: Network-first avec fallback cache
+  event.respondWith(
+    fetch(event.request).catch(function() {
+      return caches.match(event.request);
+    })
+  );
+});
+
+// ============================================
+// PUSH NOTIFICATIONS: Pour les nouvelles commandes
+// Fonctionne même quand l'app est FERMÉE
+// ============================================
+self.addEventListener('push', function(event) {
+  // Définir un payload par défaut
+  var payload = { 
+    title: 'Nouvelle commande', 
+    body: "Une nouvelle commande vient d'être passée.",
+    data: { url: '/management/orders/' }
+  };
+  
+  if (event.data) {
+    try {
+      var parsed = event.data.json();
+      // Fusionner avec le payload par défaut
+      payload.title = parsed.title || payload.title;
+      payload.body = parsed.body || parsed.message || payload.body;
+      payload.nonce = parsed.nonce || null;
+      if (parsed.data) {
+        payload.data = parsed.data;
+      }
+    } catch (e) {
+      // Si ce n'est pas du JSON, essayer en texte brut
+      try {
+        var txt = event.data.text();
+        if (txt) {
+          payload.body = txt;
+        }
+      } catch (e2) {
+        // Utiliser le payload par défaut
+      }
     }
+  }
 
-    var nonce = payload.nonce || String(Date.now());
-    event.waitUntil(
-        self.registration.showNotification(payload.title || 'Nouvelle commande', {
-            body: payload.body || payload.message || "Une nouvelle commande vient d'être passée.",
-            tag: 'new-order-' + nonce,
-            requireInteraction: false
-        })
-    );
+  // Toujours afficher la notification, même en cas d'erreur de parsing
+  event.waitUntil(showNotification(payload));
 });
 
-self.addEventListener('notificationclick', function (event) {
-    event.notification.close();
-    var ordersUrl = new URL('management/orders/', self.registration.scope).href;
-    event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
-            for (var i = 0; i < clientList.length; i++) {
-                if (clientList[i].url.indexOf('management/orders') !== -1) {
-                    clientList[i].focus();
-                    return;
-                }
-            }
-            if (clients.openWindow) {
-                clients.openWindow(ordersUrl);
-            }
-        })
-    );
+// Fonction pour afficher une notification
+function showNotification(payload) {
+  var nonce = payload.nonce || String(Date.now());
+  
+  var notificationOptions = {
+    body: payload.body || payload.message || "Une nouvelle commande vient d'être passée.",
+    icon: '/assets/icons/icon-192x192.png',
+    badge: '/assets/icons/icon-192x192.png',
+    tag: 'new-order-' + nonce,
+    requireInteraction: true,
+    renotify: true,
+    vibrate: [200, 100, 200],
+    data: payload.data || { url: '/management/orders/' }
+  };
+
+  // Ajouter un son si disponible
+  if (payload.sound || payload.audio) {
+    notificationOptions.audio = payload.sound || payload.audio;
+  }
+
+  return self.registration.showNotification(
+    payload.title || 'Nouvelle commande',
+    notificationOptions
+  );
+}
+
+// ============================================
+// NOTIFICATION CLICK: Ouvre la page appropriée
+// ============================================
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+  
+  // Récupérer l'URL depuis les data de la notification
+  var url = '/management/orders/';
+  if (event.notification.data && event.notification.data.url) {
+    url = event.notification.data.url;
+  }
+  
+  // Vérifier si l'URL est relative ou absolue
+  if (url.startsWith('http')) {
+    // URL absolue, l'utiliser telle quelle
+  } else if (url.startsWith('/')) {
+    // URL relative, ajouter le scope
+    url = new URL(url, self.registration.scope).href;
+  } else {
+    // Fallback
+    url = new URL('management/orders/', self.registration.scope).href;
+  }
+  
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      // Chercher un client déjà sur la bonne page
+      for (var i = 0; i < clientList.length; i++) {
+        if (clientList[i].url.indexOf(url) !== -1) {
+          clientList[i].focus();
+          // Envoyer un message pour notifier que la notification a été cliquée
+          clientList[i].postMessage({
+            type: 'NOTIFICATION_CLICKED',
+            data: event.notification.data
+          });
+          return;
+        }
+      }
+      
+      // Sinon ouvrir un nouveau client
+      if (clients.openWindow) {
+        return clients.openWindow(url);
+      }
+    })
+  );
 });
+
+// ============================================
+// MESSAGE: Communication entre SW et pages
+// ============================================
+self.addEventListener('message', function(event) {
+  if (event.data.type === 'SUBSCRIBE_PUSH') {
+    // Gérer l'abonnement depuis la page
+    var applicationServerKey = urlBase64ToUint8Array(event.data.applicationServerKey);
+    
+    event.waitUntil(
+      self.registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: applicationServerKey
+      }).then(function(subscription) {
+        return event.source.postMessage({
+          type: 'SUBSCRIPTION_SUCCESS',
+          subscription: subscription
+        });
+      }).catch(function(error) {
+        return event.source.postMessage({
+          type: 'SUBSCRIPTION_ERROR',
+          error: error.message
+        });
+      })
+    );
+  }
+});
+
+// Fonction utilitaire pour convertir URL Base64 en Uint8Array
+function urlBase64ToUint8Array(base64String) {
+  var padding = '='.repeat((4 - base64String.length % 4) % 4);
+  var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  var rawData = self.atob(base64);
+  return Uint8Array.from([].map.call(rawData, function(c) {
+    return c.charCodeAt(0);
+  }));
+}

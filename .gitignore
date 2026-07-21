@@ -1,3 +1,5 @@
 src/.env
 uploads/
 config/vapid.php
+vendor/
+.continue/

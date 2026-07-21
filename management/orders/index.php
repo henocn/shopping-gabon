@@ -61,26 +61,110 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
       <link href="../../assets/css/admin.css" rel="stylesheet">
       <link href="../../assets/css/navbar.css" rel="stylesheet">
       <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+      <?php include '../../includes/pwa-head.php'; ?>
+      <style>
+          .pwa-install-banner {
+              position: fixed;
+              top: 0;
+              left: 0;
+              right: 0;
+              z-index: 9999;
+              background: linear-gradient(135deg, #1a1a2e, #16213e);
+              color: #fff;
+              padding: 12px 16px;
+              box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+              animation: slideDown 0.3s ease-out;
+          }
+          @keyframes slideDown {
+              from { transform: translateY(-100%); }
+              to { transform: translateY(0); }
+          }
+          .pwa-install-content {
+              display: flex;
+              align-items: center;
+              gap: 12px;
+              max-width: 1200px;
+              margin: 0 auto;
+          }
+          .pwa-install-icon {
+              width: 40px;
+              height: 40px;
+              border-radius: 8px;
+              flex-shrink: 0;
+          }
+          .pwa-install-text {
+              flex: 1;
+              min-width: 0;
+              line-height: 1.3;
+          }
+          .pwa-install-text strong {
+              display: block;
+              font-size: 14px;
+          }
+          .pwa-install-text span {
+              display: block;
+              font-size: 12px;
+              opacity: 0.8;
+          }
+          .pwa-install-content .btn-success {
+              flex-shrink: 0;
+              font-weight: 600;
+              padding: 6px 16px;
+              border-radius: 6px;
+          }
+          .pwa-install-content .btn-close {
+              flex-shrink: 0;
+              opacity: 0.7;
+              filter: brightness(0) invert(1);
+          }
+          body.pwa-banner-shown {
+              padding-top: 64px;
+          }
+      </style>
 </head>
 
 <body>
+      <div id="pwa-install-banner" class="pwa-install-banner d-none">
+          <div class="pwa-install-content">
+              <img src="/assets/icons/icon-192x192.png" alt="LUXEMARKET" class="pwa-install-icon">
+              <div class="pwa-install-text">
+                  <strong>Installer l'application</strong>
+                  <span>Gérez vos commandes plus rapidement</span>
+              </div>
+              <button type="button" id="pwa-install-btn" class="btn btn-sm btn-success">Installer</button>
+              <button type="button" id="pwa-install-dismiss" class="btn-close btn-close-white" aria-label="Fermer"></button>
+          </div>
+      </div>
 
       <?php include '../../includes/navbar.php'; ?>
 
       <main class="container-fluid my-4">
 
-            <!-- En-tête avec bouton Archives et bannière notifications push -->
+            <!-- En-tête avec bouton Archives -->
             <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                  <h4 class="mb-0">Gestion des Commandes</h4>
+                  <h4 class="mb-0 d-flex align-items-center">
+                        Gestion des Commandes
+                        <span id="offline-sync-badge" class="d-none"></span>
+                  </h4>
                   <div class="d-flex align-items-center gap-2">
-                        <div id="push-notif-banner" class="d-none align-items-center gap-2 py-1 px-2 rounded bg-light border">
-                              <span class="small text-muted">Recevoir les notifications push pour les nouvelles commandes</span>
-                              <button type="button" id="push-enable-btn" class="btn btn-order-primary btn-sm">Activer</button>
-                        </div>
                         <a href="archive.php" class="btn btn-order-primary border-1 border-black rounded-3">
                               <i class='bx bx-archive me-2'></i> Archivées
                         </a>
                   </div>
+            </div>
+
+            <!-- Bannière notifications push (pleine largeur sur mobile) -->
+            <div id="push-notif-banner" class="d-none alert alert-info align-items-center justify-content-between mb-3 shadow-sm border-0" role="alert">
+                  <div class="d-flex align-items-center">
+                        <i class='bx bx-bell fs-2 me-3 text-primary'></i>
+                        <div>
+                              <strong>Activer les notifications</strong>
+                              <div class="small text-muted">Recevez une alerte pour chaque nouvelle commande, même quand l'application est fermée.</div>
+                        </div>
+                  </div>
+                  <button type="button" id="push-enable-btn" class="btn btn-primary btn-sm text-nowrap ms-3 shadow-sm px-3 rounded-pill">
+                        Activer
+                  </button>
             </div>
 
             <!-- Navigation par onglets -->
@@ -501,6 +585,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
       <script src="../../assets/js/ordering-alert.js"></script>
       <script src="../../assets/js/filter-orders.js"></script>
       <script src="../../assets/js/reload.js"></script>
+      <script src="../../assets/js/offline-sync.js"></script>
         
       <script>
             let currentDeliveryContext = null;
@@ -1033,13 +1118,67 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
             }
 
             /**
+             * Construit un objet Order depuis la ligne HTML (pour le mode hors ligne)
+             */
+            function buildOrderFromRow(orderId) {
+                  const row = document.querySelector('tr[data-order-id="' + orderId + '"]');
+                  if (!row) return null;
+
+                  const cells = row.querySelectorAll('td');
+                  if (cells.length < 11) return null;
+
+                  let status = 'new';
+                  const tabPane = row.closest('.tab-pane');
+                  if (tabPane) {
+                        const id = tabPane.id;
+                        if (id === 'pane-to-process') status = 'new';
+                        else if (id === 'pane-processing') status = 'processing';
+                        else if (id === 'pane-remind') status = 'remind';
+                        else if (id === 'pane-unreachable') status = 'unreachable';
+                        else if (id === 'pane-delivered') status = 'deliver';
+                  }
+
+                  let priceStr = cells[8].textContent.replace(/[^0-9]/g, '');
+                  let managerNote = cells[9].textContent.trim();
+                  if (managerNote === '—') managerNote = '';
+                  
+                  return {
+                        order_id: orderId,
+                        newstat: status,
+                        client_name: cells[2].textContent.trim(),
+                        client_phone: cells[3].textContent.trim(),
+                        client_adress: cells[4].textContent.trim() === '—' ? '' : cells[4].textContent.trim(),
+                        client_note: cells[5].textContent.trim() === '—' ? '' : cells[5].textContent.trim(),
+                        product_name: cells[6].textContent.trim(),
+                        quantity: cells[7].textContent.trim() || 1,
+                        total_price: priceStr || 0,
+                        manager_note: managerNote
+                  };
+            }
+
+            /**
              * Charge les données de la commande à la demande (si les modales n'existent
-             * pas encore dans le DOM) avant d'exécuter le callback — évite de pré-générer
-             * des modales pour des commandes jamais ouvertes par l'admin.
+             * pas encore dans le DOM) avant d'exécuter le callback.
+             * Si hors-ligne, construit la modale depuis les données affichées dans le tableau.
              */
             function ensureOrderModalsFetched(orderId, callback) {
                   if (document.getElementById('orderModal' + orderId) && document.getElementById('deliveryFeeModal' + orderId)) {
                         callback();
+                        return;
+                  }
+
+                  // Fonction de repli pour générer la modale localement
+                  const fallbackLocalModal = function() {
+                        const order = buildOrderFromRow(orderId);
+                        if (order) {
+                              ensureOrderModals(order);
+                              initOrderInteractions();
+                        }
+                        callback();
+                  };
+
+                  if (!navigator.onLine) {
+                        fallbackLocalModal();
                         return;
                   }
 
@@ -1049,11 +1188,13 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                               if (data && data.success && data.order) {
                                     ensureOrderModals(data.order);
                                     initOrderInteractions();
+                                    callback();
+                              } else {
+                                    fallbackLocalModal();
                               }
-                              callback();
                         })
                         .catch(function() {
-                              callback();
+                              fallbackLocalModal();
                         });
             }
 
@@ -1246,16 +1387,31 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
 
                   const $form = $(formElement);
 
-                  // Vérifier si une action a bien été choisie (modal)
                   const $actionSelect = $form.find('select[name="newstat"]');
-                  if ($actionSelect.length && $actionSelect.val() === '') {
-                        alert('Veuillez choisir une action avant de continuer.');
-                        return;
-                  }
+                  // On ne bloque plus si l'action est vide, pour permettre de juste modifier une note ou un prix sans changer le statut.
 
                   const formData = $form.serialize() + '&is_ajax=1';
 
                   console.log('[AJAX] Envoi vers:', $form.attr('action'), '| orderId:', orderId, '| données:', formData);
+
+                  // Si on est explicitement hors ligne avant même de lancer la requête
+                  if (!navigator.onLine && typeof OfflineSyncManager !== 'undefined') {
+                        console.log('[AJAX] Mode HORS-LIGNE détecté. Sauvegarde locale.');
+                        const values = extractFormValues(formElement);
+                        const newStatus = values.newstat || '';
+                        
+                        // Fermer la modale si ouverte
+                        const mainModalEl = document.getElementById('orderModal' + orderId);
+                        if (mainModalEl) {
+                              const _modal = bootstrap.Modal.getInstance(mainModalEl);
+                              if (_modal) _modal.hide();
+                        }
+
+                        OfflineSyncManager.saveAction($form.attr('action') || 'save.php', formData, orderId, values).then(function() {
+                              applyOrderUpdateInDom(orderId, newStatus, values);
+                        });
+                        return;
+                  }
 
                   const $submitBtn = $form.find('#submitBtn' + orderId);
                   const originalHtml = $submitBtn.length ? $submitBtn.html() : null;
@@ -1298,8 +1454,19 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                               }
                         },
                         error: function(xhr, status, err) {
-                              console.error('[AJAX] Erreur:', status, err, xhr.responseText);
-                              alert('Erreur réseau lors de la mise à jour. Réponse: ' + xhr.responseText.substring(0, 200));
+                              console.error('[AJAX] Erreur:', status, err, xhr.status);
+                              
+                              // Erreur réseau (0) ou coupure = hors-ligne inopiné
+                              if (xhr.status === 0 && typeof OfflineSyncManager !== 'undefined') {
+                                    console.log('[AJAX] Perte de connexion pendant la requête. Sauvegarde locale.');
+                                    const values = extractFormValues(formElement);
+                                    const newStatus = values.newstat || '';
+                                    OfflineSyncManager.saveAction($form.attr('action') || 'save.php', formData, orderId, values).then(function() {
+                                          applyOrderUpdateInDom(orderId, newStatus, values);
+                                    });
+                              } else {
+                                    alert('Erreur lors de la mise à jour (Code HTTP ' + xhr.status + '). Réponse: ' + xhr.responseText.substring(0, 200));
+                              }
                         },
                         complete: function() {
                               if ($submitBtn.length && originalHtml) {
@@ -1687,7 +1854,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   var storedKey = null;
                   try { storedKey = localStorage.getItem('push_vapid_public_key'); } catch (e) {}
 
-                  return navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                  return navigator.serviceWorker.register('/sw.js', { scope: '/management/' })
                         .then(function(reg) {
                               return reg.pushManager.getSubscription().then(function(existingSub) {
                                     if (existingSub && storedKey === publicKey) {
@@ -1735,7 +1902,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   createFetchWithTimeout('push-public-key.php', { method: 'GET' }, PUSH_FETCH_TIMEOUT_MS)
                         .then(function(r) { return r.json(); })
                         .then(function(data) {
-                              if (!data.enabled || !data.publicKey) return;
+                              if (!data.success || !data.publicKey) return;
                               var banner = document.getElementById('push-notif-banner');
                               var btn = document.getElementById('push-enable-btn');
                               if (!banner || !btn) return;
@@ -1782,6 +1949,8 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
             });
       </script>
 
+      <?php include '../../includes/push-notifications-init.php'; ?>
+      <?php include '../../includes/pwa-script.php'; ?>
 </body>
 
 </html>

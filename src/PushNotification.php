@@ -24,7 +24,7 @@ class PushNotification
      * Envoie une notification "nouvelle commande" à tous les abonnés.
      * $clientName et $productName sont optionnels, mais permettent un message plus détaillé.
      */
-    public function notifyNewOrder(?string $clientName = null, ?string $productName = null): void
+    public function notifyNewOrder(?string $clientName = null, ?string $productName = null, ?int $totalPrice = null): void
     {
         $vapid = $this->loadVapid();
         if (!$vapid || empty($vapid['publicKey']) || empty($vapid['privateKey'])) {
@@ -48,6 +48,9 @@ class PushNotification
         } else {
             $body = "Une nouvelle commande vient d'être passée.";
         }
+        if ($totalPrice) {
+            $body .= sprintf(" (%s FCFA)", number_format($totalPrice, 0, ',', ' '));
+        }
 
         $payload = json_encode([
             'title' => $title,
@@ -63,7 +66,11 @@ class PushNotification
             ],
         ];
 
-        $webPush = new WebPush($auth);
+        $webPush = new WebPush($auth, [
+            'TTL' => 86400,       // 24 heures — la notification restera en file d'attente
+            'urgency' => 'high',  // Priorité haute — réveille le téléphone même en mode veille
+            'topic' => 'new-order',
+        ]);
 
         foreach ($subs as $row) {
             try {
