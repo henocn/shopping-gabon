@@ -49,7 +49,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 
 <head>
       <meta charset="UTF-8">
@@ -123,7 +123,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
       </style>
 </head>
 
-<body>
+<body class="orders-page">
       <div id="pwa-install-banner" class="pwa-install-banner d-none">
           <div class="pwa-install-content">
               <img src="/assets/icons/icon-192x192.png" alt="LUXEMARKET" class="pwa-install-icon">
@@ -151,20 +151,6 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                               <i class='bx bx-archive me-2'></i> Archivées
                         </a>
                   </div>
-            </div>
-
-            <!-- Bannière notifications push (pleine largeur sur mobile) -->
-            <div id="push-notif-banner" class="d-none alert alert-info align-items-center justify-content-between mb-3 shadow-sm border-0" role="alert">
-                  <div class="d-flex align-items-center">
-                        <i class='bx bx-bell fs-2 me-3 text-primary'></i>
-                        <div>
-                              <strong>Activer les notifications</strong>
-                              <div class="small text-muted">Recevez une alerte pour chaque nouvelle commande, même quand l'application est fermée.</div>
-                        </div>
-                  </div>
-                  <button type="button" id="push-enable-btn" class="btn btn-primary btn-sm text-nowrap ms-3 shadow-sm px-3 rounded-pill">
-                        Activer
-                  </button>
             </div>
 
             <!-- Navigation par onglets -->
@@ -230,7 +216,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                           <p class="text-muted">Aucune commande à traiter.</p>
                                     <?php else: ?>
                                           <div class="table-responsive">
-                                                <table class="table table-bordered" id="orders-table">
+                                                 <table class="table table-bordered orders-table" id="orders-table-to-process">
                                                       <thead>
                                                             <tr>
                                                                   <th scope="col">ID</th>
@@ -263,7 +249,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                             ?>
                                                                   <tr class="order-row <?= $statusClass ?>"
                                                                         data-order-id="<?= (int)$order['order_id'] ?>"
-                                                                        data-status="<?= $order['newstat'] ?>"
+                                                                         data-status="<?= htmlspecialchars((string) $order['newstat'], ENT_QUOTES, 'UTF-8') ?>"
                                                                         data-client="<?= htmlspecialchars(strtolower($order['client_name'])) ?>"
                                                                         data-phone="<?= htmlspecialchars($order['client_phone']) ?>"
                                                                         data-product="<?= htmlspecialchars(strtolower($order['product_name'])) ?>">
@@ -281,6 +267,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                                     <!-- Boutons directs pour les commandes programmées -->
                                                                                     <div class="order-action-group">
                                                                                           <form method="POST" action="save.php" id="quickDeliverForm<?= $order['order_id'] ?>">
+                                                                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8') ?>">
                                                                                                 <input type="hidden" name="order_id" value="<?= $order['order_id'] ?>">
                                                                                                 <input type="hidden" name="quantity" value="<?= $order['quantity'] ?>">
                                                                                                 <input type="hidden" name="total_price" value="<?= $order['total_price'] ?>">
@@ -295,6 +282,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                                                 </button>
                                                                                           </form>
                                                                                           <form method="POST" action="save.php" data-confirm="Annuler cette commande ?">
+                                                                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8') ?>">
                                                                                                 <input type="hidden" name="order_id" value="<?= $order['order_id'] ?>">
                                                                                                 <input type="hidden" name="quantity" value="<?= $order['quantity'] ?>">
                                                                                                 <input type="hidden" name="total_price" value="<?= $order['total_price'] ?>">
@@ -356,7 +344,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                           <p class="text-muted">Aucune commande injoignable.</p>
                                     <?php else: ?>
                                           <div class="table-responsive">
-                                                <table class="table table-bordered" id="orders-table">
+                                                 <table class="table table-bordered orders-table" id="orders-table-unreachable">
                                                       <thead>
                                                             <tr>
                                                                   <th scope="col">ID</th>
@@ -376,7 +364,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                             <?php foreach ($groupedOrders['unreachable'] as $order): ?>
                                                                   <tr class="order-row order-row-unreachable"
                                                                         data-order-id="<?= (int)$order['order_id'] ?>"
-                                                                        data-status="<?= $order['newstat'] ?>"
+                                                                         data-status="<?= htmlspecialchars((string) $order['newstat'], ENT_QUOTES, 'UTF-8') ?>"
                                                                         data-client="<?= htmlspecialchars(strtolower($order['client_name'])) ?>"
                                                                         data-phone="<?= htmlspecialchars($order['client_phone']) ?>"
                                                                         data-product="<?= htmlspecialchars(strtolower($order['product_name'])) ?>">
@@ -435,7 +423,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                           <p class="text-muted">Aucune commande programmée.</p>
                                     <?php else: ?>
                                           <div class="table-responsive">
-                                                <table class="table table-bordered" id="orders-table">
+                                                 <table class="table table-bordered orders-table" id="orders-table-processing">
                                                       <thead>
                                                             <tr>
                                                                   <th scope="col">ID</th>
@@ -456,7 +444,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                             <?php foreach ($groupedOrders['processing'] as $order): ?>
                                                                   <tr class="order-row order-row-processing"
                                                                         data-order-id="<?= (int)$order['order_id'] ?>"
-                                                                        data-status="<?= $order['newstat'] ?>"
+                                                                         data-status="<?= htmlspecialchars((string) $order['newstat'], ENT_QUOTES, 'UTF-8') ?>"
                                                                         data-client="<?= htmlspecialchars(strtolower($order['client_name'])) ?>"
                                                                         data-phone="<?= htmlspecialchars($order['client_phone']) ?>"
                                                                         data-product="<?= htmlspecialchars(strtolower($order['product_name'])) ?>">
@@ -473,6 +461,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                         <td>
                                                                               <div class="order-action-group">
                                                                                     <form method="POST" action="save.php" id="quickDeliverForm<?= $order['order_id'] ?>">
+                                                                                          <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8') ?>">
                                                                                           <input type="hidden" name="order_id" value="<?= $order['order_id'] ?>">
                                                                                           <input type="hidden" name="quantity" value="<?= $order['quantity'] ?>">
                                                                                           <input type="hidden" name="total_price" value="<?= $order['total_price'] ?>">
@@ -487,6 +476,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                                                           </button>
                                                                                     </form>
                                                                                     <form method="POST" action="save.php" data-confirm="Annuler cette commande ?">
+                                                                                          <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8') ?>">
                                                                                           <input type="hidden" name="order_id" value="<?= $order['order_id'] ?>">
                                                                                           <input type="hidden" name="quantity" value="<?= $order['quantity'] ?>">
                                                                                           <input type="hidden" name="total_price" value="<?= $order['total_price'] ?>">
@@ -539,7 +529,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                           <p class="text-muted">Aucune commande livrée aujourd'hui.</p>
                                     <?php else: ?>
                                           <div class="table-responsive">
-                                                <table class="table table-striped table-bordered" id="orders-delivered-table">
+                                                 <table class="table table-striped table-bordered orders-delivered-table" id="orders-table-delivered">
                                                       <thead>
                                                             <tr>
                                                                   <th>ID</th>
@@ -584,7 +574,6 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
       <script src="../../assets/js/bootstrap.bundle.min.js"></script>
       <script src="../../assets/js/ordering-alert.js"></script>
       <script src="../../assets/js/filter-orders.js"></script>
-      <script src="../../assets/js/reload.js"></script>
       <script src="../../assets/js/offline-sync.js"></script>
         
       <script>
@@ -601,6 +590,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
             const RELOAD_RETRY_WHEN_BUSY_MS = 5000;
             const PUSH_SETUP_DELAY_MS = 5000;
             const PUSH_FETCH_TIMEOUT_MS = 8000;
+            const CSRF_TOKEN = <?= json_encode(csrfToken()) ?>;
 
             // Empêche les warnings aria-hidden en retirant le focus avant fermeture d'une modal
             function blurFocusInsideModal(modalElement) {
@@ -722,7 +712,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   if (paneId === 'pane-delivered') {
                         return '' +
                         '<div class="table-responsive">' +
-                              '<table class="table table-striped table-bordered" id="orders-delivered-table">' +
+                        '<table class="table table-striped table-bordered orders-delivered-table" id="orders-table-delivered-dynamic">' +
                                     '<thead>' +
                                           '<tr>' +
                                                 '<th>ID</th>' +
@@ -742,7 +732,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
 
                   return '' +
                   '<div class="table-responsive">' +
-                        '<table class="table table-bordered" id="orders-table">' +
+                        '<table class="table table-bordered orders-table" id="orders-table-' + paneId + '-dynamic">' +
                               '<thead>' +
                                     '<tr>' +
                                           '<th scope="col">ID</th>' +
@@ -852,6 +842,99 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   '</button>';
             }
 
+            function appendOrderCell(row, value, className, title) {
+                  const cell = document.createElement('td');
+                  if (className) {
+                        cell.className = className;
+                  }
+                  cell.textContent = String(value ?? '');
+                  if (typeof title !== 'undefined') {
+                        cell.title = String(title ?? '');
+                  }
+                  row.appendChild(cell);
+                  return cell;
+            }
+
+            function createActionCell(orderId, status, values) {
+                  const cell = document.createElement('td');
+                  const quantity = Number(values.quantity || 0);
+                  const totalPrice = Number(values.total_price || 0);
+                  const managerNote = String(values.manager_note || '');
+                  const updatedAt = String(values.updated_at || '');
+
+                  if (status !== 'processing') {
+                        const button = document.createElement('button');
+                        button.className = 'btn btn-order-primary btn-sm open-order-modal-btn';
+                        button.type = 'button';
+                        button.title = 'Traiter';
+                        button.setAttribute('aria-label', 'Traiter');
+                        button.dataset.orderId = String(orderId);
+                        const icon = document.createElement('i');
+                        icon.className = 'bx bx-edit-alt';
+                        button.appendChild(icon);
+                        cell.appendChild(button);
+                        return cell;
+                  }
+
+                  const group = document.createElement('div');
+                  group.className = 'order-action-group';
+
+                  const deliverForm = document.createElement('form');
+                  deliverForm.method = 'POST';
+                  deliverForm.action = 'save.php';
+                  deliverForm.id = 'quickDeliverForm' + orderId;
+                  [
+                        ['order_id', orderId], ['quantity', quantity], ['total_price', totalPrice],
+                        ['newstat', 'deliver'], ['manager_note', managerNote],
+                        ['updated_at', updatedAt], ['valider', 'update'], ['delivery_fee', 0],
+                        ['csrf_token', CSRF_TOKEN]
+                  ].forEach(function(entry) {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = entry[0];
+                        input.value = String(entry[1]);
+                        deliverForm.appendChild(input);
+                  });
+                  const deliverButton = document.createElement('button');
+                  deliverButton.type = 'button';
+                  deliverButton.className = 'btn btn-success btn-sm quick-deliver-btn';
+                  deliverButton.dataset.orderId = String(orderId);
+                  deliverButton.title = 'Livrer';
+                  const deliverIcon = document.createElement('i');
+                  deliverIcon.className = 'bx bx-check';
+                  deliverButton.append(deliverIcon, document.createTextNode('Livrer'));
+                  deliverForm.appendChild(deliverButton);
+
+                  const cancelForm = document.createElement('form');
+                  cancelForm.method = 'POST';
+                  cancelForm.action = 'save.php';
+                  cancelForm.dataset.confirm = 'Annuler cette commande ?';
+                  [
+                        ['order_id', orderId], ['quantity', quantity], ['total_price', totalPrice],
+                        ['newstat', 'canceled'], ['manager_note', managerNote],
+                        ['updated_at', updatedAt], ['valider', 'update'],
+                        ['csrf_token', CSRF_TOKEN]
+                  ].forEach(function(entry) {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = entry[0];
+                        input.value = String(entry[1]);
+                        cancelForm.appendChild(input);
+                  });
+                  const cancelButton = document.createElement('button');
+                  cancelButton.type = 'submit';
+                  cancelButton.className = 'btn btn-danger btn-sm';
+                  cancelButton.title = 'Annuler';
+                  const cancelIcon = document.createElement('i');
+                  cancelIcon.className = 'bx bx-x';
+                  cancelButton.append(cancelIcon, document.createTextNode('Annuler'));
+                  cancelForm.appendChild(cancelButton);
+
+                  group.append(deliverForm, cancelForm);
+                  cell.appendChild(group);
+                  return cell;
+            }
+
             function updateOrderModalState(orderId, status, values) {
                   const quantityInput = document.getElementById('modalQuantity' + orderId);
                   if (quantityInput) {
@@ -876,7 +959,7 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   const actionSelect = document.getElementById('actionSelect' + orderId);
                   if (actionSelect) {
                         const options = getActionOptionsByStatus(status);
-                        actionSelect.innerHTML = '';
+                         actionSelect.replaceChildren();
 
                         const placeholder = document.createElement('option');
                         placeholder.value = '';
@@ -938,15 +1021,14 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
 
                         const deliveredRow = document.createElement('tr');
                         deliveredRow.setAttribute('data-order-id', String(orderId));
-                        deliveredRow.innerHTML = '' +
-                              '<td>#' + orderId + '</td>' +
-                              '<td class="client-name-cell" title="' + escapeHtml(snapshot.clientName) + '">' + escapeHtml(snapshot.clientName) + '</td>' +
-                              '<td class="note-cell" title="' + escapeHtml(snapshot.address) + '">' + escapeHtml(snapshot.address || '—') + '</td>' +
-                              '<td class="note-cell" title="' + escapeHtml(snapshot.clientNote) + '">' + escapeHtml(snapshot.clientNote || '—') + '</td>' +
-                              '<td class="product-name-cell" title="' + escapeHtml(snapshot.productName) + '">' + escapeHtml(snapshot.productName) + '</td>' +
-                              '<td>' + Number(values.quantity || 0) + '</td>' +
-                              '<td>' + formatPriceFcfa(values.total_price || 0) + '</td>' +
-                              '<td>' + formatDateTime(values.updated_at) + '</td>';
+                         appendOrderCell(deliveredRow, '#' + orderId);
+                         appendOrderCell(deliveredRow, snapshot.clientName, 'client-name-cell', snapshot.clientName);
+                         appendOrderCell(deliveredRow, snapshot.address || '—', 'note-cell', snapshot.address);
+                         appendOrderCell(deliveredRow, snapshot.clientNote || '—', 'note-cell', snapshot.clientNote);
+                         appendOrderCell(deliveredRow, snapshot.productName, 'product-name-cell', snapshot.productName);
+                         appendOrderCell(deliveredRow, Number(values.quantity || 0));
+                         appendOrderCell(deliveredRow, formatPriceFcfa(values.total_price || 0));
+                         appendOrderCell(deliveredRow, formatDateTime(values.updated_at));
 
                         deliveredTbody.prepend(deliveredRow);
                         row.remove();
@@ -979,7 +1061,8 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   }
 
                   if (row.cells[9]) {
-                        row.cells[9].innerHTML = buildActionCellHtml(orderId, newStatus, values);
+                         const actionCell = createActionCell(orderId, newStatus, values);
+                         row.replaceChild(actionCell, row.cells[9]);
                   }
 
                   if (sourcePaneId !== targetPaneId) {
@@ -1055,7 +1138,8 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                                                 '</div>' +
                                           '</div>' +
                                           '<div class="modal-footer py-2">' +
-                                                '<input type="hidden" name="order_id" value="' + orderId + '">' +
+                                                 '<input type="hidden" name="csrf_token" value="' + escapeHtml(CSRF_TOKEN) + '">' +
+                                                 '<input type="hidden" name="order_id" value="' + orderId + '">' +
                                                 '<input type="hidden" name="valider" value="update">' +
                                                 '<input type="hidden" name="updated_at" value="' + escapeHtml(updatedAt) + '">' +
                                                 '<input type="hidden" name="delivery_fee" id="deliveryFee' + orderId + '" value="0">' +
@@ -1225,18 +1309,17 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   row.setAttribute('data-phone', String(order.client_phone || ''));
                   row.setAttribute('data-product', String(order.product_name || '').toLowerCase());
 
-                  row.innerHTML = '' +
-                        '<td>#' + orderId + '</td>' +
-                        '<td class="client-name-cell" title="' + escapeHtml(order.client_name || 'Client') + '">' + escapeHtml(order.client_name || 'Client') + '</td>' +
-                        '<td>' + escapeHtml(order.client_phone || '') + '</td>' +
-                        '<td class="note-cell" title="' + escapeHtml(order.client_adress || '') + '">' + escapeHtml((order.client_adress && String(order.client_adress).trim() !== '') ? order.client_adress : '—') + '</td>' +
-                        '<td class="note-cell" title="' + escapeHtml(order.client_note || '') + '">' + escapeHtml((order.client_note && String(order.client_note).trim() !== '') ? order.client_note : '—') + '</td>' +
-                        '<td class="product-name-cell" title="' + escapeHtml(order.product_name || 'Produit') + '">' + escapeHtml(order.product_name || 'Produit') + '</td>' +
-                        '<td>' + Number(order.quantity || 1) + '</td>' +
-                        '<td>' + formatPriceFcfa(order.total_price || 0) + '</td>' +
-                        '<td class="note-cell" title="' + escapeHtml(order.manager_note || '') + '">' + escapeHtml(order.manager_note || '') + '</td>' +
-                        '<td>' + buildActionCellHtml(orderId, status, values) + '</td>' +
-                        '<td>' + formatDateTime(order.created_at) + '</td>';
+                   appendOrderCell(row, '#' + orderId);
+                   appendOrderCell(row, order.client_name || 'Client', 'client-name-cell', order.client_name || 'Client');
+                   appendOrderCell(row, order.client_phone || '');
+                   appendOrderCell(row, order.client_adress && String(order.client_adress).trim() !== '' ? order.client_adress : '—', 'note-cell', order.client_adress || '');
+                   appendOrderCell(row, order.client_note && String(order.client_note).trim() !== '' ? order.client_note : '—', 'note-cell', order.client_note || '');
+                   appendOrderCell(row, order.product_name || 'Produit', 'product-name-cell', order.product_name || 'Produit');
+                   appendOrderCell(row, Number(order.quantity || 1));
+                   appendOrderCell(row, formatPriceFcfa(order.total_price || 0));
+                   appendOrderCell(row, order.manager_note || '', 'note-cell', order.manager_note || '');
+                   row.appendChild(createActionCell(orderId, status, values));
+                   appendOrderCell(row, formatDateTime(order.created_at));
 
                   tbody.insertBefore(row, sentinelRow);
             }
@@ -1324,15 +1407,14 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
 
                         const deliveredRow = document.createElement('tr');
                         deliveredRow.setAttribute('data-order-id', String(orderId));
-                        deliveredRow.innerHTML = '' +
-                              '<td>#' + orderId + '</td>' +
-                              '<td class="client-name-cell" title="' + escapeHtml(order.client_name || 'Client') + '">' + escapeHtml(order.client_name || 'Client') + '</td>' +
-                              '<td class="note-cell" title="' + escapeHtml(order.client_adress || '—') + '">' + escapeHtml(order.client_adress || '—') + '</td>' +
-                              '<td class="note-cell" title="' + escapeHtml(order.client_note || '—') + '">' + escapeHtml(order.client_note || '—') + '</td>' +
-                              '<td class="product-name-cell" title="' + escapeHtml(order.product_name || 'Produit') + '">' + escapeHtml(order.product_name || 'Produit') + '</td>' +
-                              '<td>' + Number(order.quantity || 1) + '</td>' +
-                              '<td>' + formatPriceFcfa(order.total_price || 0) + '</td>' +
-                              '<td>' + formatDateTime(order.updated_at || order.created_at) + '</td>';
+                         appendOrderCell(deliveredRow, '#' + orderId);
+                         appendOrderCell(deliveredRow, order.client_name || 'Client', 'client-name-cell', order.client_name || 'Client');
+                         appendOrderCell(deliveredRow, order.client_adress || '—', 'note-cell', order.client_adress || '—');
+                         appendOrderCell(deliveredRow, order.client_note || '—', 'note-cell', order.client_note || '—');
+                         appendOrderCell(deliveredRow, order.product_name || 'Produit', 'product-name-cell', order.product_name || 'Produit');
+                         appendOrderCell(deliveredRow, Number(order.quantity || 1));
+                         appendOrderCell(deliveredRow, formatPriceFcfa(order.total_price || 0));
+                         appendOrderCell(deliveredRow, formatDateTime(order.updated_at || order.created_at));
 
                         deliveredTbody.prepend(deliveredRow);
                         updateTabBadgeByPane(targetPaneId, 1);
@@ -1360,18 +1442,17 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   row.setAttribute('data-phone', String(order.client_phone || ''));
                   row.setAttribute('data-product', String(order.product_name || '').toLowerCase());
 
-                  row.innerHTML = '' +
-                        '<td>#' + orderId + '</td>' +
-                        '<td class="client-name-cell" title="' + escapeHtml(order.client_name || 'Client') + '">' + escapeHtml(order.client_name || 'Client') + '</td>' +
-                        '<td>' + escapeHtml(order.client_phone || '') + '</td>' +
-                        '<td class="note-cell" title="' + escapeHtml(order.client_adress || '') + '">' + escapeHtml((order.client_adress && String(order.client_adress).trim() !== '') ? order.client_adress : '—') + '</td>' +
-                        '<td class="note-cell" title="' + escapeHtml(order.client_note || '') + '">' + escapeHtml((order.client_note && String(order.client_note).trim() !== '') ? order.client_note : '—') + '</td>' +
-                        '<td class="product-name-cell" title="' + escapeHtml(order.product_name || 'Produit') + '">' + escapeHtml(order.product_name || 'Produit') + '</td>' +
-                        '<td>' + Number(order.quantity || 1) + '</td>' +
-                        '<td>' + formatPriceFcfa(order.total_price || 0) + '</td>' +
-                        '<td class="note-cell" title="' + escapeHtml(order.manager_note || '') + '">' + escapeHtml(order.manager_note || '') + '</td>' +
-                        '<td>' + buildActionCellHtml(orderId, status, values) + '</td>' +
-                        '<td>' + formatDateTime(order.created_at) + '</td>';
+                   appendOrderCell(row, '#' + orderId);
+                   appendOrderCell(row, order.client_name || 'Client', 'client-name-cell', order.client_name || 'Client');
+                   appendOrderCell(row, order.client_phone || '');
+                   appendOrderCell(row, order.client_adress && String(order.client_adress).trim() !== '' ? order.client_adress : '—', 'note-cell', order.client_adress || '');
+                   appendOrderCell(row, order.client_note && String(order.client_note).trim() !== '' ? order.client_note : '—', 'note-cell', order.client_note || '');
+                   appendOrderCell(row, order.product_name || 'Produit', 'product-name-cell', order.product_name || 'Produit');
+                   appendOrderCell(row, Number(order.quantity || 1));
+                   appendOrderCell(row, formatPriceFcfa(order.total_price || 0));
+                   appendOrderCell(row, order.manager_note || '', 'note-cell', order.manager_note || '');
+                   row.appendChild(createActionCell(orderId, status, values));
+                   appendOrderCell(row, formatDateTime(order.created_at));
 
                   targetTbody.prepend(row);
                   updateTabBadgeByPane(targetPaneId, 1);
@@ -1398,7 +1479,8 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   if (!navigator.onLine && typeof OfflineSyncManager !== 'undefined') {
                         console.log('[AJAX] Mode HORS-LIGNE détecté. Sauvegarde locale.');
                         const values = extractFormValues(formElement);
-                        const newStatus = values.newstat || '';
+                        const currentRow = document.querySelector('tr[data-order-id="' + orderId + '"]');
+                        const newStatus = values.newstat || (currentRow ? currentRow.getAttribute('data-status') : 'new');
                         
                         // Fermer la modale si ouverte
                         const mainModalEl = document.getElementById('orderModal' + orderId);
@@ -1408,7 +1490,12 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                         }
 
                         OfflineSyncManager.saveAction($form.attr('action') || 'save.php', formData, orderId, values).then(function() {
-                              applyOrderUpdateInDom(orderId, newStatus, values);
+                               applyOrderUpdateInDom(orderId, newStatus, values);
+                        }).catch(function(error) {
+                               console.error('[OfflineSync] Sauvegarde impossible:', error);
+                               if (typeof window.showNotification === 'function') {
+                                     window.showNotification('Impossible de sauvegarder la modification hors ligne.', 'error');
+                               }
                         });
                         return;
                   }
@@ -1749,9 +1836,15 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                         return false;
                   }
 
+                  // Le Web Push prend déjà le relais lorsqu'un abonnement existe.
+                  if (window.LUXEMARKET_PUSH && typeof window.LUXEMARKET_PUSH.isSubscribed === 'function' && window.LUXEMARKET_PUSH.isSubscribed()) {
+                        return true;
+                  }
+
                   var title = '📦 Nouvelle commande #' + orderData.order_id;
-                  var body = orderData.client_name + '\n' + orderData.product_name + '\n' + 
-                        orderData.total_price.toLocaleString('fr-FR') + ' FCFA';
+                  var price = Number(orderData.total_price || 0);
+                  var body = String(orderData.client_name || 'Client') + '\n' + String(orderData.product_name || 'Produit') + '\n' +
+                        price.toLocaleString('fr-FR') + ' FCFA';
 
                   try {
                         new window.Notification(title, {
@@ -1771,10 +1864,10 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
             // Toast personnalise pour chaque nouvelle commande
             function showDetailedToast(orderData) {
                   if (typeof window.showNotification === 'function') {
-                        var priceFormatted = orderData.total_price.toLocaleString('fr-FR');
-                        var msg = '<strong>' + orderData.client_name + '</strong><br>' +
-                              '📦 ' + orderData.product_name + '<br>' +
-                              '💰 ' + priceFormatted + ' FCFA';
+                        var priceFormatted = Number(orderData.total_price || 0).toLocaleString('fr-FR');
+                        var msg = String(orderData.client_name || 'Client') + ' — ' +
+                              String(orderData.product_name || 'Produit') + ' — ' +
+                              priceFormatted + ' FCFA';
                         window.showNotification(msg, 'success', 8000);
                   }
             }
@@ -1934,7 +2027,6 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   initOrderInteractions();
                   setupInfiniteScroll();
                   lastOrderId = getInitialLastOrderId();
-                  ensureNotificationPermission();
 
                   // Suivre l'activité utilisateur pour éviter les rechargements agressifs
                   ['click', 'keydown', 'input', 'touchstart'].forEach(function(eventName) {
@@ -1944,8 +2036,6 @@ if (isset($_SESSION['role']) && isset($_SESSION['user_id'])) {
                   setTimeout(checkNewOrders, 2500);
                   setInterval(checkNewOrders, POLLING_INTERVAL_MS);
 
-                  // Web Push : setup en arrière-plan pour ne pas bloquer le chargement
-                  setTimeout(setupPushNotifications, PUSH_SETUP_DELAY_MS);
             });
       </script>
 

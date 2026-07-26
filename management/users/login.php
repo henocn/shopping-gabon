@@ -1,9 +1,11 @@
 <?php
-session_start();
-if (isset($_SESSION) && !empty($_SESSION)) {
-    header('location:../dashboard.php');
-    exit;
-}
+require_once '../../utils/admin-session.php';
+require_once '../../utils/csrf.php';
+startAdminSession();
+// Toujours rendre la page de connexion. Rediriger automatiquement à partir
+// d'ici peut recréer une boucle si le navigateur possède d'anciens cookies avec
+// des chemins différents. Les pages protégées restent responsables du contrôle
+// de la session.
 $redirect = isset($_GET['redirect']) ? $_GET['redirect'] : '';
 $message = isset($message) ? $message : '';
 ?>
@@ -109,6 +111,7 @@ $message = isset($message) ? $message : '';
             <div class="auth-alert error" id="errorMessage"><?= htmlspecialchars($message); ?></div>
 
             <form action="save.php" method="POST" id="loginForm" class="auth-form">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="redirect" value="<?= htmlspecialchars($redirect); ?>">
                 <input type="hidden" name="validate" value="login">
                 <div class="form-group">
@@ -158,93 +161,8 @@ $message = isset($message) ? $message : '';
         })();
     </script>
 
-    <script>
-        (function() {
-            var isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                              window.navigator.standalone ||
-                              document.referrer.includes('android-app://');
+    <?php include '../../includes/pwa-script.php'; ?>
 
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/sw.js', { scope: '/management/' }).catch(function () {});
-            }
-
-            var deferredPrompt = null;
-            var banner = document.getElementById('pwa-install-banner');
-            var installBtn = document.getElementById('pwa-install-btn');
-            var dismissBtn = document.getElementById('pwa-install-dismiss');
-            var installText = banner ? banner.querySelector('.pwa-install-text') : null;
-            var bannerTimeout = null;
-
-            if (!banner || !installBtn || !dismissBtn) return;
-
-            function showBanner() {
-                banner.classList.remove('d-none');
-                document.body.classList.add('pwa-banner-shown');
-            }
-
-            function hideBanner() {
-                banner.classList.add('d-none');
-                document.body.classList.remove('pwa-banner-shown');
-            }
-
-            function showManualPrompt() {
-                if (deferredPrompt || isStandalone) return;
-                
-                if (installText) {
-                    installText.innerHTML = '<strong>Installer l\'application</strong><span>Ouvrez le menu navigateur → "Ajouter à l\'écran d\'accueil"</span>';
-                }
-                installBtn.textContent = 'Comment faire ?';
-                installBtn.onclick = function () {
-                    if (installText) {
-                        installText.innerHTML = '<strong>Installer l\'application</strong><span>Android : menu ⋮ → Ajouter à l\'écran d\'accueil<br>iOS : partager → Ajouter à l\'écran d\'accueil</span>';
-                    }
-                    installBtn.textContent = 'J\'ai compris';
-                    installBtn.onclick = function () { hideBanner(); };
-                };
-                showBanner();
-            }
-
-            window.addEventListener('beforeinstallprompt', function (e) {
-                e.preventDefault();
-                
-                if (isStandalone) return;
-                
-                deferredPrompt = e;
-                if (bannerTimeout) clearTimeout(bannerTimeout);
-                if (installText) {
-                    installText.innerHTML = '<strong>Installer l\'application</strong><span>Gérez vos commandes plus rapidement</span>';
-                }
-                installBtn.textContent = 'Installer';
-                installBtn.onclick = function () {
-                    if (!deferredPrompt) return;
-                    deferredPrompt.prompt();
-                    deferredPrompt.userChoice.then(function (choiceResult) {
-                        if (choiceResult.outcome === 'accepted') {
-                            hideBanner();
-                        }
-                        deferredPrompt = null;
-                    });
-                };
-                showBanner();
-            });
-
-            dismissBtn.addEventListener('click', function () {
-                hideBanner();
-                deferredPrompt = null;
-                if (bannerTimeout) clearTimeout(bannerTimeout);
-            });
-
-            window.addEventListener('appinstalled', function () {
-                hideBanner();
-                deferredPrompt = null;
-                if (bannerTimeout) clearTimeout(bannerTimeout);
-            });
-
-            bannerTimeout = setTimeout(showManualPrompt, 3000);
-        })();
-    </script>
-
-    <?php include '../../includes/push-notifications-init.php'; ?>
 </body>
 
 </html>

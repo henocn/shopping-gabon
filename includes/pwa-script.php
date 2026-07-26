@@ -17,6 +17,7 @@
         var dismissBtn = document.getElementById('pwa-install-dismiss');
         var installText = banner ? banner.querySelector('.pwa-install-text') : null;
         var promptShown = false;
+        var fallbackTimer = null;
 
         if (!banner || !installBtn || !dismissBtn) return;
 
@@ -33,46 +34,80 @@
             promptShown = false;
         }
 
+        function setInstallMessage(description) {
+            if (!installText) return;
+            var title = document.createElement('strong');
+            title.textContent = "Installer l'application";
+            var text = document.createElement('span');
+            text.textContent = description;
+            installText.replaceChildren(title, text);
+        }
 
-        window.addEventListener('beforeinstallprompt', function(e) {
+        function showManualGuide() {
+            if (deferredPrompt || isStandalone || promptShown) return;
+
+            var isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+            setInstallMessage(isIos
+                ? 'Touchez Partager puis Ajouter à l’écran d’accueil.'
+                : 'Ouvrez le menu ⋮ puis Ajouter à l’écran d’accueil.');
+            installBtn.textContent = 'Comment faire ?';
+            installBtn.onclick = function() {
+                setInstallMessage(isIos
+                    ? 'Dans Safari : Partager → Ajouter à l’écran d’accueil.'
+                    : 'Dans Chrome : menu ⋮ → Installer l’application ou Ajouter à l’écran d’accueil.');
+                installBtn.textContent = 'J’ai compris';
+                installBtn.onclick = hideBanner;
+            };
+            showBanner();
+        }
+
+        function showNativePrompt(e) {
             e.preventDefault();
-            
-            // Si on est déjà en standalone, on ignore
             if (isStandalone) return;
 
             deferredPrompt = e;
-
-
-            if (installText) {
-                installText.innerHTML = '<strong>Installer l\'application</strong><span>G&eacute;rez vos commandes plus rapidement</span>';
-            }
+            if (fallbackTimer) window.clearTimeout(fallbackTimer);
+            setInstallMessage('Gérez vos commandes plus rapidement.');
             installBtn.textContent = 'Installer';
             installBtn.onclick = function() {
-                if (!deferredPrompt) return;
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then(function(choiceResult) {
+                if (!deferredPrompt) {
+                    showManualGuide();
+                    return;
+                }
+
+                var promptEvent = deferredPrompt;
+                deferredPrompt = null;
+                promptEvent.prompt();
+                promptEvent.userChoice.then(function(choiceResult) {
                     if (choiceResult.outcome === 'accepted') {
                         hideBanner();
-                        // Recharger pour activer le mode standalone
-                        window.location.reload();
+                    } else {
+                        showManualGuide();
                     }
-                    deferredPrompt = null;
+                }).catch(function() {
+                    showManualGuide();
                 });
             };
             showBanner();
-        });
+        }
+
+        window.addEventListener('beforeinstallprompt', showNativePrompt);
 
         dismissBtn.addEventListener('click', function() {
             hideBanner();
             deferredPrompt = null;
+            if (fallbackTimer) window.clearTimeout(fallbackTimer);
         });
 
         window.addEventListener('appinstalled', function() {
             hideBanner();
             deferredPrompt = null;
-            // Recharger pour appliquer le mode standalone
-            window.location.reload();
+            if (fallbackTimer) window.clearTimeout(fallbackTimer);
         });
+
+        if (!isStandalone) {
+            fallbackTimer = window.setTimeout(showManualGuide, 2500);
+        }
 
     })();
 </script>

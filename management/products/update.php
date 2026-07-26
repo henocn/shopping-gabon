@@ -22,11 +22,15 @@ $countryStmt = $cnx->prepare("SELECT id, code, name FROM countries ORDER BY name
 $countryStmt->execute();
 $countries = $countryStmt->fetchAll(PDO::FETCH_ASSOC);
 
-if (!isset($_GET['id'])) {
+if (!isset($_GET['id']) || !is_scalar($_GET['id'])) {
     die("Produit introuvable.");
 }
 
-$productId = intval($_GET['id']);
+$productId = filter_var($_GET['id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+if ($productId === false) {
+    header('Location: ../error.php?code=404');
+    exit;
+}
 $productInfo = $manager->getAllProductInfoById($productId);
 
 $product = $productInfo['product'];
@@ -62,6 +66,7 @@ $productCountries = $manager->getProductCountries($productId);
 
 
         <form id="productForm" enctype="multipart/form-data" class="form-container" method="POST" action="save.php">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
 
             <div class="floating-actions">
                 <button type="button" class="floating-btn" onclick="toggleSection('carousel')" title="Modifier les images">

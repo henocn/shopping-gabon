@@ -11,6 +11,7 @@ use src\Connectbd;
 
 // Vérifier la connexion
 verifyConnection("/management/orders/");
+verifyCsrfToken();
 
 $cnx = Connectbd::getConnection();
 

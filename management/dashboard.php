@@ -251,6 +251,7 @@ $canceledOrders = $orderObj->getOrdersByStatus('canceled');*/
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
                 </div>
                 <form id="cleanupForm">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
                     <div class="modal-body">
                         <p class="text-muted mb-3">
                             Supprimez les commandes anciennement créées, selon les statuts que vous choisissez ci-dessous.
@@ -320,10 +321,14 @@ $canceledOrders = $orderObj->getOrdersByStatus('canceled');*/
             }
 
             const btn = this.querySelector('button[type="submit"]');
-            const originalText = btn.innerHTML;
+            const originalContent = Array.from(btn.childNodes).map(function(node) {
+                return node.cloneNode(true);
+            });
 
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Traitement...';
+            const spinner = document.createElement('span');
+            spinner.className = 'spinner-border spinner-border-sm me-2';
+            btn.replaceChildren(spinner, document.createTextNode('Traitement...'));
 
             try {
                 const response = await fetch('cleanup-orders.php', {
@@ -333,7 +338,8 @@ $canceledOrders = $orderObj->getOrdersByStatus('canceled');*/
                     },
                     body: new window.URLSearchParams({
                         days_ago: daysAgo,
-                        statuses: checkedStatuses
+                        statuses: checkedStatuses,
+                        csrf_token: this.querySelector('[name="csrf_token"]')?.value || ''
                     })
                 });
                 
@@ -352,7 +358,9 @@ $canceledOrders = $orderObj->getOrdersByStatus('canceled');*/
                 alert('✗ Erreur réseau : ' + error.message);
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = originalText;
+                btn.replaceChildren.apply(btn, originalContent.map(function(node) {
+                    return node.cloneNode(true);
+                }));
             }
         });
     </script>

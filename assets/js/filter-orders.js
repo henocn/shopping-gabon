@@ -2,10 +2,10 @@
 document.addEventListener("DOMContentLoaded", function () {
   const searchInput = document.getElementById("searchInput");
   const statusFilter = document.getElementById("statusFilter");
-  const orderRows = document.querySelectorAll(".order-row");
   const orderCount = document.getElementById("order-count");
 
   function filterOrders() {
+    const orderRows = document.querySelectorAll("#pane-to-process .order-row");
     const searchTerm = searchInput.value.toLowerCase();
     const statusValue = statusFilter.value;
     let visibleCount = 0;
@@ -36,12 +36,12 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     // Mettre à jour le compteur
-    orderCount.textContent = visibleCount;
+    if (orderCount) orderCount.textContent = visibleCount;
   }
 
   // Écouter les événements
-  searchInput.addEventListener("input", filterOrders);
-  statusFilter.addEventListener("change", filterOrders);
+  if (searchInput) searchInput.addEventListener("input", filterOrders);
+  if (statusFilter) statusFilter.addEventListener("change", filterOrders);
 
   // Fonction de recherche générique pour les autres onglets
   function setupTabSearch(inputId, tabPaneId) {
@@ -76,4 +76,3 @@ document.addEventListener("DOMContentLoaded", function () {
   setupTabSearch("searchInputProcessing", "pane-processing");
   setupTabSearch("searchInputDelivered", "pane-delivered");
 });
-

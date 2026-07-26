@@ -422,6 +422,7 @@ $expenseTypes = [
                                     <td class="text-end"><?php echo number_format($e['cout'], 0, ',', ' '); ?> FCFA</td>
                                     <td class="text-center">
                                         <form action="save.php" method="post" class="d-inline" onsubmit="return confirm('Supprimer cette dépense ?');">
+                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="action" value="delete">
                                             <input type="hidden" name="expense_id" value="<?php echo (int)$e['id']; ?>">
                                             <button type="submit" class="btn btn-link p-0 product-action-btn product-action-delete" title="Supprimer">
@@ -450,6 +451,7 @@ $expenseTypes = [
                 </div>
                 <div class="modal-body">
                     <form action="save.php" method="post">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
                         <input type="hidden" name="action" value="add">
                         <div class="mb-3">
                             <label class="form-label" style="color: var(--purple);">Type</label>

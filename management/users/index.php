@@ -133,6 +133,7 @@ $users = $user->getAllUsers();
                     </div>
                     <div class="modal-body">
                         <form action="save.php" method="POST">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
                             <div class="mb-3 position-relative">
                                 <label class="form-label" style="color: var(--purple);">
                                     <i class='bx bx-user'></i> Nom et prénom
@@ -212,15 +213,15 @@ $users = $user->getAllUsers();
                             }
                         ?>
                         <tr class="<?php echo $user['is_active'] == 1 ? 'status-active' : 'status-inactive'; ?>">
-                            <td class="text-center"><?php echo $user['id']; ?></td>
+                            <td class="text-center"><?php echo (int) $user['id']; ?></td>
                             <td>
                                 <div class="d-flex align-items-center">
                                     <i class='bx bxs-user-circle me-2' style="font-size: 2rem; color: var(--purple);"></i>
-                                    <a href="mailto:<?php echo $user['email']; ?>" class="text-decoration-none" style="color: var(--purple);"><?php echo $user['email']; ?></a>
+                                    <a href="mailto:<?php echo rawurlencode((string) $user['email']); ?>" class="text-decoration-none" style="color: var(--purple);"><?php echo htmlspecialchars((string) $user['email'], ENT_QUOTES, 'UTF-8'); ?></a>
                                 </div>
                             </td>
-                            <td><?php echo $user['name']; ?></td>
-                            <td><?php echo $user['country_name']; ?></td>
+                            <td><?php echo htmlspecialchars((string) $user['name'], ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td><?php echo htmlspecialchars((string) $user['country_name'], ENT_QUOTES, 'UTF-8'); ?></td>
                             <td class="text-center"><?php echo $user['is_active'] == 1 ? '<i class="bx bxs-check-circle" style="color: green;"></i>' : '<i class="bx bxs-x-circle" style="color: red;"></i>'; ?></td>
                             <td>
                                 <span style="color: var(--purple); font-weight: bold;"><?php echo $user['role'] == 0 ? 'Assistant' : 'Admin'; ?></span>
@@ -228,6 +229,7 @@ $users = $user->getAllUsers();
                             <td class="text-center">
 
                                 <form action="save.php" method="post" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
                                     <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
                                     <input type="hidden" name="validate" value="suspend">
                                     <button type="submit" class="btn btn-link p-0" style="color: var(--purple); padding: 1rem; border: 1px solid var(--purple);">
@@ -238,6 +240,7 @@ $users = $user->getAllUsers();
                                     <i class='bx bxs-key' style="font-size: 1.5rem;"></i>
                                 </button>
                                 <form action="save.php" method="post" class="d-inline form-delete-user" data-warning="<?php echo htmlspecialchars($deleteWarning, ENT_QUOTES); ?>">
+                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
                                     <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
                                     <input type="hidden" name="validate" value="delete">
                                     <button type="submit" class="btn btn-link p-0" style="color: var(--primary); padding: 1rem; border: 1px solid var(--primary);">
@@ -256,6 +259,7 @@ $users = $user->getAllUsers();
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                             </div>
                                             <form action="save.php" method="post">
+                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
                                                 <div class="modal-body">
                                                     <p class="text-muted">Nouveau mot de passe pour <strong><?php echo htmlspecialchars($user['name']); ?></strong> :</p>
                                                     <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">

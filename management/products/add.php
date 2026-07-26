@@ -50,6 +50,7 @@ $countries = $countryStmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
 
         <form id="productForm" enctype="multipart/form-data" class="form-container" method="POST" action="save.php">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
 
             <div class="floating-actions">
                 <button type="button" class="floating-btn" onclick="toggleSection('carousel')" title="Ajouter des images">

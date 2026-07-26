@@ -56,6 +56,7 @@ class PushNotification
             'title' => $title,
             'body'  => $body,
             'nonce' => $nonce,
+            'data'  => ['url' => '/management/orders/'],
         ]);
 
         $auth = [
@@ -67,9 +68,9 @@ class PushNotification
         ];
 
         $webPush = new WebPush($auth, [
-            'TTL' => 86400,       // 24 heures — la notification restera en file d'attente
+            'TTL' => 86400,       // Garde la notification disponible après un redémarrage.
             'urgency' => 'high',  // Priorité haute — réveille le téléphone même en mode veille
-            'topic' => 'new-order',
+            'topic' => 'new-order-' . $nonce,
         ]);
 
         foreach ($subs as $row) {
@@ -91,6 +92,9 @@ class PushNotification
         foreach ($webPush->flush() as $report) {
             if (!$report->isSuccess() && $report->isSubscriptionExpired()) {
                 $this->deleteSubscription($report->getEndpoint());
+            } elseif (!$report->isSuccess()) {
+                $reason = method_exists($report, 'getReason') ? $report->getReason() : 'raison inconnue';
+                error_log('[Push] Échec envoi notification: ' . $reason);
             }
         }
     }

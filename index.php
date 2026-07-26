@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once __DIR__ . '/utils/csrf.php';
 require 'vendor/autoload.php';
 
 use src\Connectbd;
@@ -16,7 +17,13 @@ if (!isset($_GET['id'])) {
     $product = $productManager->getRandomProduct();
     $productId = intval($product['product_id']);
 } else {
-    $productId = intval($_GET['id']);
+    $productId = is_scalar($_GET['id'])
+        ? filter_var($_GET['id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])
+        : false;
+    if ($productId === false) {
+        header('Location: error.php?code=404');
+        exit;
+    }
 }
 
 if (isset($_SESSION['order_message'])) {
@@ -69,7 +76,12 @@ function countryCurrencyInfo($code, $name = '')
 }
 
 // Récupérer le prix du pays (à partir de la première association)
-$selectedCountryId = isset($_GET['country']) ? intval($_GET['country']) : null;
+$selectedCountryId = isset($_GET['country']) && is_scalar($_GET['country'])
+    ? filter_var($_GET['country'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])
+    : null;
+if ($selectedCountryId === false) {
+    $selectedCountryId = null;
+}
 $displayPrice = 0;
 $displayCurrencyInfo = [
     'code' => 'XOF',
@@ -225,6 +237,7 @@ if (isset($_SESSION['fb_purchase_data'])) {
                             </div>
 
                         <input type="hidden" name="product_id" value="<?= $product['id']; ?>">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
                         <input type="hidden" name="valider" value="commander">
                         <!-- Champs CAPI : event_id et cookies Facebook pour la déduplication -->
                         <input type="hidden" name="fb_event_id" id="fb_event_id" value="">
@@ -632,18 +645,18 @@ if (isset($_SESSION['fb_purchase_data'])) {
             //  Envoyé au chargement de la page produit
             // ──────────────────────────────────────────────
             trackWhenReady('ViewContent', {
-                content_ids: ['<?= $product['id']; ?>'],
-                content_name: '<?= htmlspecialchars($product['name'], ENT_QUOTES); ?>',
+                content_ids: [<?= json_encode((string) $product['id'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>],
+                content_name: <?= json_encode((string) $product['name'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>,
                 content_type: 'product',
                 value: <?= $displayPrice; ?>,
                 currency: getCurrentCurrencyCode()
             });
 
-            var productId = '<?= $product['id']; ?>';
+            var productId = <?= json_encode((string) $product['id'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
             var orderLimitApi = window.createOrderLimit(productId, {
-                limit: 3,
+                limit: 2,
                 doubleClickGuardMs: 2500,
-                windowMs: 5 * 60 * 60 * 1000
+                windowMs: 48 * 60 * 60 * 1000
             });
             orderLimitApi.applyLimitState();
 
@@ -664,10 +677,10 @@ if (isset($_SESSION['fb_purchase_data'])) {
 
                         var currentPrice = (displayPriceEl && parseInt(displayPriceEl.getAttribute('data-price'), 10)) || <?= (int)$displayPrice; ?>;
                         trackWhenReady('InitiateCheckout', {
-                            content_ids: ['<?= $product['id']; ?>'],
+                            content_ids: [<?= json_encode((string) $product['id'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>],
                             content_type: 'product',
                             contents: [{
-                                id: '<?= $product['id']; ?>',
+                                id: <?= json_encode((string) $product['id'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>,
                                 quantity: 1,
                                 item_price: currentPrice
                             }],
@@ -697,7 +710,7 @@ if (isset($_SESSION['fb_purchase_data'])) {
                         submitBtn.style.pointerEvents = 'none';
                         var span = submitBtn.querySelector('span');
                         if (span) {
-                            span.innerHTML = 'Traitement...';
+                            span.textContent = 'Traitement...';
                         }
                     }
 
@@ -752,10 +765,10 @@ if (isset($_SESSION['fb_purchase_data'])) {
 
                     if (!purchasePayload.content_ids) {
                         var currentPrice = (displayPriceEl && parseInt(displayPriceEl.getAttribute('data-price'), 10)) || <?= (int)$displayPrice; ?>;
-                        purchasePayload.content_ids = ['<?= $product['id']; ?>'];
+                        purchasePayload.content_ids = [<?= json_encode((string) $product['id'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>];
                         purchasePayload.content_type = 'product';
                         purchasePayload.contents = [{
-                            id: '<?= $product['id']; ?>',
+                            id: <?= json_encode((string) $product['id'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>,
                             quantity: 1,
                             item_price: currentPrice
                         }];
@@ -767,7 +780,7 @@ if (isset($_SESSION['fb_purchase_data'])) {
                     trackWhenReady('Purchase', purchasePayload, { eventID: eventId, skipServerRelay: true });
 
                     // ── Soumettre le formulaire au serveur ──
-                    var submitUrl = orderForm.getAttribute('action') || window.location.href;
+                    var submitUrl = 'management/orders/save.php';
                     var formData = new FormData(orderForm);
 
                     var sendRequest = function() {
@@ -781,12 +794,10 @@ if (isset($_SESSION['fb_purchase_data'])) {
                         })
                             .then(function(response) {
                                 if (response.redirected) {
-                                    window.location.href = response.url;
+                                    window.location.reload();
                                     return;
                                 }
-                                return response.text().then(function() {
-                                    window.location.href = response.url || window.location.href;
-                                });
+                                window.location.reload();
                             })
                             .catch(function() {
                                 orderForm.submit();

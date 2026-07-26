@@ -15,7 +15,12 @@ try {
     $cnx = Connectbd::getConnection();
     $orderManager = new Order($cnx);
 
-    $lastId = isset($_GET['last_id']) ? (int) $_GET['last_id'] : 0;
+    $lastId = isset($_GET['last_id']) && is_scalar($_GET['last_id'])
+        ? filter_var($_GET['last_id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]])
+        : 0;
+    if ($lastId === false) {
+        $lastId = 0;
+    }
 
     $maxId = 0;
     $newCount = 0;

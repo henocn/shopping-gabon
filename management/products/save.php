@@ -1,6 +1,6 @@
 <?php
-session_start();
 require("../../vendor/autoload.php");
+require("../../utils/middleware.php");
 
 use src\Connectbd;
 use src\Product;
@@ -11,25 +11,57 @@ $cnx = Connectbd::getConnection();
 $manager = new Product($cnx);
 $packManager = new Pack($cnx);
 
+verifyConnection('/management/products/');
+checkAdminAccess($_SESSION['user_id']);
+checkIsActive($_SESSION['user_id']);
+
+function safeUploadName($originalName, array $allowedExtensions): string
+{
+    if (!is_string($originalName)) {
+        return '';
+    }
+
+    $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+    if ($extension === '' || !in_array($extension, $allowedExtensions, true)) {
+        return '';
+    }
+
+    return bin2hex(random_bytes(16)) . '.' . $extension;
+}
+
+function safeStoredUploadName($value): string
+{
+    if (!is_string($value) || $value === '') {
+        return '';
+    }
+
+    $name = basename($value);
+    return $name === $value && strpos($name, '..') === false ? $name : '';
+}
+
 
 if (!isset($_POST['valider'])) {
     header('Location: index.php?error=' . urlencode("Action non spécifiée"));
     exit;
 }
 
+verifyCsrfToken();
 
-$action = $_POST['valider'];
+
+$action = is_string($_POST['valider']) ? trim($_POST['valider']) : '';
 
 switch ($action) {
     case 'upstatus':
         if (
             isset($_POST['product_id'], $_POST['new_status']) &&
-            is_numeric($_POST['product_id']) &&
-            in_array($_POST['new_status'], [0, 1])
+            is_scalar($_POST['product_id']) &&
+            is_scalar($_POST['new_status']) &&
+            filter_var($_POST['product_id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) !== false &&
+            filter_var($_POST['new_status'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 0, 'max_range' => 1]]) !== false
         ) {
 
             try {
-                $manager->updateProductStatus($_POST['product_id'], $_POST['new_status']);
+                $manager->updateProductStatus((int) $_POST['product_id'], (int) $_POST['new_status']);
                 $message = "Statut du produit mis à jour avec succès !";
                 header('Location: index.php?message=' . urlencode($message));
                 exit;
@@ -42,9 +74,9 @@ switch ($action) {
         break;
 
     case 'delete':
-        if (isset($_POST['product_id']) && is_numeric($_POST['product_id'])) {
+        if (isset($_POST['product_id']) && is_scalar($_POST['product_id']) && filter_var($_POST['product_id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) !== false) {
             try {
-                $manager->deleteProduct($_POST['product_id']);
+                $manager->deleteProduct((int) $_POST['product_id']);
                 $message = "Produit supprimé avec succès !";
                 header('Location: index.php?message=' . urlencode($message));
                 exit;
@@ -57,6 +89,17 @@ switch ($action) {
         break;
 
     case 'Enregistrer le produit':
+        $nameInput = isset($_POST['name']) && is_string($_POST['name']) ? trim($_POST['name']) : '';
+        $purchasePrice = isset($_POST['purchase_price']) && is_numeric($_POST['purchase_price']) ? (float) $_POST['purchase_price'] : -1;
+        $shippingPrice = isset($_POST['shipping_price']) && is_numeric($_POST['shipping_price']) ? (float) $_POST['shipping_price'] : -1;
+        $quantityInput = is_scalar($_POST['quantity'] ?? null)
+            ? filter_var($_POST['quantity'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]])
+            : false;
+        if ($nameInput === '' || strlen($nameInput) > 255 || !is_finite($purchasePrice) || $purchasePrice < 0 || !is_finite($shippingPrice) || $shippingPrice < 0 || $quantityInput === false) {
+            header('Location: add.php?error=' . urlencode('Données produit invalides'));
+            exit;
+        }
+
         // Création des dossiers d'upload si nécessaire
         $uploadDirs = [
             'main' => __DIR__ . '/../../uploads/main/',
@@ -76,7 +119,7 @@ switch ($action) {
             // Traitement de l'image principale
             $mainImageName = '';
             if (isset($_FILES['mainImage']) && $_FILES['mainImage']['error'] === UPLOAD_ERR_OK) {
-                $mainImageName = time() . '_' . basename($_FILES['mainImage']['name']);
+                $mainImageName = safeUploadName($_FILES['mainImage']['name'], ['jpg', 'jpeg', 'png', 'gif', 'webp']);
                 move_uploaded_file(
                     $_FILES['mainImage']['tmp_name'],
                     $uploadDirs['main'] . $mainImageName
@@ -92,7 +135,7 @@ switch ($action) {
                         $_FILES['carouselImages']['error'][$key] === UPLOAD_ERR_OK &&
                         $key < 5
                     ) {
-                        $fileName = time() . '_' . basename($_FILES['carouselImages']['name'][$key]);
+                        $fileName = safeUploadName($_FILES['carouselImages']['name'][$key], ['jpg', 'jpeg', 'png', 'gif', 'webp']);
                         if (move_uploaded_file($tmp_name, $uploadDirs['carousel'] . $fileName)) {
                             $carouselImages[$key] = $fileName;
                         }
@@ -102,10 +145,10 @@ switch ($action) {
 
             // Création du produit principal
             $productData = [
-                'name' => trim((string)($_POST['name'] ?? '')),
-                'purchase_price' => floatval($_POST['purchase_price']),
-                'shipping_price' => floatval($_POST['shipping_price']),
-                'quantity' => intval($_POST['quantity']),
+                'name' => $nameInput,
+                'purchase_price' => $purchasePrice,
+                'shipping_price' => $shippingPrice,
+                'quantity' => $quantityInput,
                 'image' => $mainImageName,
                 'description' => (string)($_POST['description'] ?? ''),
                 'carousel1' => $carouselImages[0],
@@ -148,7 +191,7 @@ switch ($action) {
                                 $_FILES['characteristic_image']['error'][$key] === UPLOAD_ERR_OK
                             ) {
 
-                                $characteristicImage = time() . '_' . basename($_FILES['characteristic_image']['name'][$key]);
+                                $characteristicImage = safeUploadName($_FILES['characteristic_image']['name'][$key], ['jpg', 'jpeg', 'png', 'gif', 'webp']);
                                 move_uploaded_file(
                                     $_FILES['characteristic_image']['tmp_name'][$key],
                                     $uploadDirs['characteristics'] . $characteristicImage
@@ -171,7 +214,7 @@ switch ($action) {
                 if (isset($_FILES['video'])) {
                     foreach ($_FILES['video']['tmp_name'] as $key => $tmp_name) {
                         if ($_FILES['video']['error'][$key] === UPLOAD_ERR_OK) {
-                            $videoName = time() . '_' . basename($_FILES['video']['name'][$key]);
+                            $videoName = safeUploadName($_FILES['video']['name'][$key], ['mp4', 'webm', 'ogg', 'mov']);
                             if (move_uploaded_file($tmp_name, $uploadDirs['videos'] . $videoName)) {
                                 $videoData = [
                                     'product_id' => $productId,
@@ -198,7 +241,7 @@ switch ($action) {
                                 $_FILES['pack_image']['error'][$key] === UPLOAD_ERR_OK
                             ) {
 
-                                $image = time() . '_' . basename($_FILES['pack_image']['name'][$key]);
+                                $image = safeUploadName($_FILES['pack_image']['name'][$key], ['jpg', 'jpeg', 'png', 'gif', 'webp']);
                                 move_uploaded_file(
                                     $_FILES['pack_image']['tmp_name'][$key],
                                     $uploadDirs['packs'] . $image
@@ -239,7 +282,24 @@ switch ($action) {
     case 'Mettre a jour le produit':
         // Code pour mettre à jour un produit
         if (isset($_POST['productId'])) {
-            $productId = $_POST['productId'];
+            $productId = is_scalar($_POST['productId'])
+                ? filter_var($_POST['productId'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])
+                : false;
+            if ($productId === false) {
+                header('Location: index.php?error=' . urlencode('Produit invalide'));
+                exit;
+            }
+
+            $nameInput = isset($_POST['name']) && is_string($_POST['name']) ? trim($_POST['name']) : '';
+            $purchasePrice = isset($_POST['purchase_price']) && is_numeric($_POST['purchase_price']) ? (float) $_POST['purchase_price'] : -1;
+            $shippingPrice = isset($_POST['shipping_price']) && is_numeric($_POST['shipping_price']) ? (float) $_POST['shipping_price'] : -1;
+            $quantityInput = is_scalar($_POST['quantity'] ?? null)
+                ? filter_var($_POST['quantity'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]])
+                : false;
+            if ($nameInput === '' || strlen($nameInput) > 255 || !is_finite($purchasePrice) || $purchasePrice < 0 || !is_finite($shippingPrice) || $shippingPrice < 0 || $quantityInput === false) {
+                header('Location: update.php?id=' . (int) $productId . '&error=' . urlencode('Données produit invalides'));
+                exit;
+            }
 
             // Création des dossiers d'upload si nécessaire
             $uploadDirs = [
@@ -261,7 +321,7 @@ switch ($action) {
                 $existingProduct = $manager->getProducts($productId);
 
                 // Traitement de l'image principale
-                $mainImageName = $_POST['existing_main_image'] ?? '';
+                $mainImageName = safeStoredUploadName($_POST['existing_main_image'] ?? '');
 
                 // Supprimer l'image principale si demandé
                 if (isset($_POST['delete_main_image']) && !empty($mainImageName)) {
@@ -282,7 +342,7 @@ switch ($action) {
                         }
                     }
 
-                    $mainImageName = time() . '_' . basename($_FILES['mainImage']['name']);
+                    $mainImageName = safeUploadName($_FILES['mainImage']['name'], ['jpg', 'jpeg', 'png', 'gif', 'webp']);
                     move_uploaded_file(
                         $_FILES['mainImage']['tmp_name'],
                         $uploadDirs['main'] . $mainImageName
@@ -291,11 +351,14 @@ switch ($action) {
 
                 // Traitement des images du carousel
                 $carouselImages = ['', '', '', '', ''];
-                $existingCarousel = $_POST['existing_carousel_images'] ?? [];
+                $existingCarousel = isset($_POST['existing_carousel_images']) && is_array($_POST['existing_carousel_images'])
+                    ? array_map('safeStoredUploadName', $_POST['existing_carousel_images'])
+                    : [];
 
                 // Gérer la suppression des images du carousel
                 if (isset($_POST['delete_carousel_images'])) {
                     foreach ($_POST['delete_carousel_images'] as $imageToDelete) {
+                        $imageToDelete = safeStoredUploadName($imageToDelete);
                         $filePath = $uploadDirs['carousel'] . $imageToDelete;
                         if (file_exists($filePath)) {
                             unlink($filePath);
@@ -322,7 +385,7 @@ switch ($action) {
                     $newIndex = count($existingCarousel);
                     foreach ($_FILES['carouselImages']['tmp_name'] as $key => $tmp_name) {
                         if ($_FILES['carouselImages']['error'][$key] === UPLOAD_ERR_OK && $newIndex < 5) {
-                            $fileName = time() . '_' . basename($_FILES['carouselImages']['name'][$key]);
+                            $fileName = safeUploadName($_FILES['carouselImages']['name'][$key], ['jpg', 'jpeg', 'png', 'gif', 'webp']);
                             if (move_uploaded_file($tmp_name, $uploadDirs['carousel'] . $fileName)) {
                                 $carouselImages[$newIndex] = $fileName;
                                 $newIndex++;
@@ -333,10 +396,10 @@ switch ($action) {
 
                 // Mise à jour du produit principal
                 $productData = [
-                    'name' => trim((string)($_POST['name'] ?? '')),
-                    'purchase_price' => floatval($_POST['purchase_price']),
-                    'shipping_price' => floatval($_POST['shipping_price']),
-                    'quantity' => intval($_POST['quantity']),
+                    'name' => $nameInput,
+                    'purchase_price' => $purchasePrice,
+                    'shipping_price' => $shippingPrice,
+                    'quantity' => $quantityInput,
                     'image' => $mainImageName,
                     'description' => (string)($_POST['description'] ?? ''),
                     'carousel1' => $carouselImages[0],
@@ -452,7 +515,7 @@ switch ($action) {
                             continue;
                         }
 
-                        $charImage = $_POST['existing_char_image'][$index] ?? '';
+                        $charImage = safeStoredUploadName($_POST['existing_char_image'][$index] ?? '');
 
                         // Supprimer l'image si demandé
                         if (isset($_POST['delete_char_image']) && in_array($charId, $_POST['delete_char_image']) && !empty($charImage)) {
@@ -473,7 +536,7 @@ switch ($action) {
                                 }
                             }
 
-                            $charImage = time() . '_' . basename($_FILES['char_image']['name'][$index]);
+                            $charImage = safeUploadName($_FILES['char_image']['name'][$index], ['jpg', 'jpeg', 'png', 'gif', 'webp']);
                             move_uploaded_file(
                                 $_FILES['char_image']['tmp_name'][$index],
                                 $uploadDirs['characteristics'] . $charImage
@@ -501,7 +564,7 @@ switch ($action) {
                                 $_FILES['characteristic_image']['error'][$key] === UPLOAD_ERR_OK
                             ) {
 
-                                $characteristicImage = time() . '_' . basename($_FILES['characteristic_image']['name'][$key]);
+                                $characteristicImage = safeUploadName($_FILES['characteristic_image']['name'][$key], ['jpg', 'jpeg', 'png', 'gif', 'webp']);
                                 move_uploaded_file(
                                     $_FILES['characteristic_image']['tmp_name'][$key],
                                     $uploadDirs['characteristics'] . $characteristicImage
@@ -538,7 +601,10 @@ switch ($action) {
                             continue;
                         }
 
-                        $videoUrl = $_POST['existing_video_url'][$index] ?? '';
+                        $videoUrlRaw = $_POST['existing_video_url'][$index] ?? '';
+                        $videoUrl = is_string($videoUrlRaw) && filter_var($videoUrlRaw, FILTER_VALIDATE_URL)
+                            ? $videoUrlRaw
+                            : safeStoredUploadName($videoUrlRaw);
 
                         // Supprimer le fichier vidéo si demandé
                         if (
@@ -563,7 +629,7 @@ switch ($action) {
                                 }
                             }
 
-                            $videoUrl = time() . '_' . basename($_FILES['existing_video_file']['name'][$index]);
+                            $videoUrl = safeUploadName($_FILES['existing_video_file']['name'][$index], ['mp4', 'webm', 'ogg', 'mov']);
                             move_uploaded_file(
                                 $_FILES['existing_video_file']['tmp_name'][$index],
                                 $uploadDirs['videos'] . $videoUrl
@@ -584,7 +650,7 @@ switch ($action) {
                 if (isset($_FILES['new_video'])) {
                     foreach ($_FILES['new_video']['tmp_name'] as $key => $tmp_name) {
                         if ($_FILES['new_video']['error'][$key] === UPLOAD_ERR_OK) {
-                            $videoName = time() . '_' . basename($_FILES['new_video']['name'][$key]);
+                            $videoName = safeUploadName($_FILES['new_video']['name'][$key], ['mp4', 'webm', 'ogg', 'mov']);
                             if (move_uploaded_file($tmp_name, $uploadDirs['videos'] . $videoName)) {
                                 $videoData = [
                                     'product_id' => $productId,
@@ -601,7 +667,7 @@ switch ($action) {
                 elseif (isset($_FILES['video'])) {
                     foreach ($_FILES['video']['tmp_name'] as $key => $tmp_name) {
                         if ($_FILES['video']['error'][$key] === UPLOAD_ERR_OK) {
-                            $videoName = time() . '_' . basename($_FILES['video']['name'][$key]);
+                            $videoName = safeUploadName($_FILES['video']['name'][$key], ['mp4', 'webm', 'ogg', 'mov']);
                             if (move_uploaded_file($tmp_name, $uploadDirs['videos'] . $videoName)) {
                                 $videoData = [
                                     'product_id' => $productId,
@@ -635,7 +701,7 @@ switch ($action) {
                         $packName        = $_POST['existing_pack_name'][$index] ?? '';
                         $packQuantity     = (int)($_POST['existing_pack_quantity'][$index] ?? 0);
                         $packPrice    = (int)($_POST['existing_pack_price'][$index] ?? 0);
-                        $packImage        = $_POST['existing_pack_image'][$index] ?? '';
+                        $packImage        = safeStoredUploadName($_POST['existing_pack_image'][$index] ?? '');
 
                         // Suppression d’image si demandé
                         if (
@@ -659,7 +725,7 @@ switch ($action) {
                                 }
                             }
 
-                            $packImage = time() . '_' . basename($_FILES['existing_pack_image_file']['name'][$index]);
+                            $packImage = safeUploadName($_FILES['existing_pack_image_file']['name'][$index], ['jpg', 'jpeg', 'png', 'gif', 'webp']);
                             move_uploaded_file(
                                 $_FILES['existing_pack_image_file']['tmp_name'][$index],
                                 $uploadDirs['packs'] . $packImage
@@ -688,7 +754,7 @@ switch ($action) {
                                 isset($_FILES['pack_image']['tmp_name'][$key]) &&
                                 $_FILES['pack_image']['error'][$key] === UPLOAD_ERR_OK
                             ) {
-                                $packImage = time() . '_' . basename($_FILES['pack_image']['name'][$key]);
+                                $packImage = safeUploadName($_FILES['pack_image']['name'][$key], ['jpg', 'jpeg', 'png', 'gif', 'webp']);
                                 move_uploaded_file(
                                     $_FILES['pack_image']['tmp_name'][$key],
                                     $uploadDirs['packs'] . $packImage

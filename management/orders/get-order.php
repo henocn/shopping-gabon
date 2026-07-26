@@ -12,8 +12,10 @@ checkIsActive($_SESSION['user_id']);
 header('Content-Type: application/json');
 
 try {
-    $orderId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
-    if ($orderId <= 0) {
+    $orderId = isset($_GET['id']) && is_scalar($_GET['id'])
+        ? filter_var($_GET['id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])
+        : false;
+    if ($orderId === false) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Identifiant de commande invalide.']);
         exit;

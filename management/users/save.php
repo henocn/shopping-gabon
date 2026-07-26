@@ -1,11 +1,11 @@
 <?php
-session_start();
 // ---------------------------------------------------------------------------//
 //     logique de rédirection en fonction du role apres la connexion          //
 // ---------------------------------------------------------------------------//
 
 require("../../vendor/autoload.php");
 require("../../utils/middleware.php");
+startAdminSession();
 
 use src\Connectbd;
 use src\User;
@@ -24,21 +24,50 @@ function redirect($url, $message = '')
     exit();
 }
 
+function safeInternalRedirect($value, $fallback = '/management/dashboard.php')
+{
+    if (!is_string($value) || $value === '' || $value[0] !== '/' || str_starts_with($value, '//')) {
+        return $fallback;
+    }
+
+    $parts = parse_url($value);
+    if ($parts === false || isset($parts['scheme']) || isset($parts['host'])) {
+        return $fallback;
+    }
+
+    return $value;
+}
+
 if (isset($_POST['validate'])) {
-    $connect = strtolower(htmlspecialchars($_POST['validate']));
+    $connect = is_string($_POST['validate']) ? strtolower(trim($_POST['validate'])) : '';
     $manager = new User($cnx);
+
+    if ($connect !== 'login') {
+        if (empty($_SESSION['user_id'])) {
+            header('Location: login.php');
+            exit;
+        }
+        checkAdminAccess($_SESSION['user_id']);
+        checkIsActive($_SESSION['user_id']);
+    }
+    verifyCsrfToken();
 
     switch ($connect) {
 
         case 'login':
             if (
-                isset($_POST['email']) && !empty($_POST['email']) &&
-                isset($_POST['password']) && !empty($_POST['password']) &&
-                isset($_POST['redirect'])
+                isset($_POST['email']) && is_string($_POST['email']) && trim($_POST['email']) !== '' &&
+                isset($_POST['password']) && is_string($_POST['password']) && $_POST['password'] !== '' &&
+                isset($_POST['redirect']) && is_string($_POST['redirect'])
             ) {
-                $email = htmlspecialchars($_POST['email']);
-                $password = htmlspecialchars($_POST['password']);
-                $redirect = htmlspecialchars($_POST['redirect']);
+                $email = trim((string) $_POST['email']);
+                $password = (string) $_POST['password'];
+                $redirect = safeInternalRedirect($_POST['redirect'], '/management/dashboard.php');
+
+                if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 254 || strlen($password) > 1024) {
+                    header('Location: login.php?error=invalid');
+                    exit;
+                }
 
                 $data = [
                     'email'  => $email,
@@ -48,6 +77,7 @@ if (isset($_POST['validate'])) {
                 $result = $manager->verify($data);
 
                 if ($result["success"]) {
+                    session_regenerate_id(true);
                     $_SESSION['user_name'] = $result['name'];
                     $_SESSION['user_id'] = $result['id'];
                     $_SESSION['email'] = $data['email'];
@@ -55,9 +85,9 @@ if (isset($_POST['validate'])) {
                     $_SESSION['country'] = $result['country'];
                     $_SESSION['is_active'] = $result['is_active'];
 
-                    header('Location: ' . ($redirect ?: "/management/dashboard.php"));
+                    header('Location: ' . $redirect);
                 } else {
-                    header('Location: login.php?error=' . $result['message'] . ($redirect ? '&redirect=' . $redirect : ''));
+                    header('Location: login.php?error=failed&redirect=' . rawurlencode($redirect));
                 }
             } else {
                 echo "On ne peut pas se connecter";
@@ -65,19 +95,19 @@ if (isset($_POST['validate'])) {
             break;
 
         case 'ajouter':
-            if (
-                !isset($_POST['email']) || empty(trim($_POST['email'])) ||
-                !isset($_POST['name']) || empty(trim($_POST['name'])) ||
-                !isset($_POST['country']) || empty(trim($_POST['country'])) ||
-                !isset($_POST['role'])
-            ) {
+            if (!is_string($_POST['email'] ?? null) || !is_string($_POST['name'] ?? null) ||
+                !is_scalar($_POST['country'] ?? null) || !is_scalar($_POST['role'] ?? null)) {
                 redirect('index.php', "Veuillez remplir tous les champs.");
             }
 
             $email = trim($_POST['email']);
             $name = trim($_POST['name']);
-            $role = trim($_POST['role']);
-            $country = trim($_POST['country']);
+            $role = filter_var($_POST['role'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 0, 'max_range' => 1]]);
+            $country = filter_var($_POST['country'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 254 || $name === '' || strlen($name) > 150 || $role === false || $country === false) {
+                redirect('index.php', "Données utilisateur invalides.");
+            }
 
             if ($manager->email_exists($email)) {
                 redirect('index.php', "L'email existe déjà. Veuillez en choisir un autre.");
@@ -101,7 +131,7 @@ if (isset($_POST['validate'])) {
 
         case 'suspend':
             if (
-                isset($_POST['user_id']) && is_numeric($_POST['user_id'])
+                isset($_POST['user_id']) && is_scalar($_POST['user_id']) && filter_var($_POST['user_id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])
             ) {
                 $user_id = (int)$_POST['user_id'];
 
@@ -119,7 +149,7 @@ if (isset($_POST['validate'])) {
             checkAdminAccess($_SESSION['user_id'] ?? 0);
 
             if (
-                isset($_POST['user_id']) && is_numeric($_POST['user_id'])
+                isset($_POST['user_id']) && is_scalar($_POST['user_id']) && filter_var($_POST['user_id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])
             ) {
                 $user_id = (int)$_POST['user_id'];
 
@@ -143,8 +173,8 @@ if (isset($_POST['validate'])) {
             checkAdminAccess($_SESSION['user_id'] ?? 0);
 
             if (
-                isset($_POST['user_id']) && is_numeric($_POST['user_id']) &&
-                isset($_POST['new_password']) && strlen($_POST['new_password']) >= 6
+                isset($_POST['user_id']) && is_scalar($_POST['user_id']) && filter_var($_POST['user_id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) &&
+                isset($_POST['new_password']) && is_string($_POST['new_password']) && strlen($_POST['new_password']) >= 6 && strlen($_POST['new_password']) <= 1024
             ) {
                 $user_id = (int)$_POST['user_id'];
                 $new_password = $_POST['new_password'];
@@ -166,21 +196,27 @@ if (isset($_POST['validate'])) {
                 isset($_POST['confirm_password']) && !empty($_POST['confirm_password']) &&
                 isset($_SESSION['user_id'])
             ) {
-                $current_password = htmlspecialchars($_POST['current_password']);
-                $new_password = htmlspecialchars($_POST['new_password']);
-                $confirm_password = htmlspecialchars($_POST['confirm_password']);
+                $current_password = is_string($_POST['current_password']) ? $_POST['current_password'] : '';
+                $new_password = is_string($_POST['new_password']) ? $_POST['new_password'] : '';
+                $confirm_password = is_string($_POST['confirm_password']) ? $_POST['confirm_password'] : '';
+                $redirect = safeInternalRedirect($_POST['redirect'] ?? '', '/management/dashboard.php');
+
+                if (strlen($new_password) < 6 || strlen($new_password) > 1024) {
+                    header('Location: change-pass.php?error=invalid_password');
+                    exit();
+                }
 
                 if ($new_password !== $confirm_password) {
-                    header('Location: change-pass.php?error=passwords_not_match' . ($redirect ? '&redirect=' . $redirect : ''));
+                    header('Location: change-pass.php?error=passwords_not_match&redirect=' . rawurlencode($redirect));
                     exit();
                 }
 
                 $result = $manager->changePassword($_SESSION['user_id'], $current_password, $new_password);
 
                 if ($result["success"]) {
-                    header('Location: logout.php' . ($redirect ? '&redirect=' . $redirect : ''));
+                    header('Location: logout.php?redirect=' . rawurlencode($redirect));
                 } else {
-                    header('Location: change-pass.php?error=' . $result['message'] . ($redirect ? '&redirect=' . $redirect : ''));
+                    header('Location: change-pass.php?error=' . rawurlencode((string) $result['message']) . '&redirect=' . rawurlencode($redirect));
                 }
             } else {
                 header('Location: change-pass.php?error=missing_fields');
@@ -188,8 +224,8 @@ if (isset($_POST['validate'])) {
             break;
 
         default:
-        header("Location: /shopping/error.php?code=400");
+        header("Location: /error.php?code=400");
     }
 } else {
-    header("Location: /shopping/error.php?code=400");
+    header("Location: /error.php?code=400");
 }

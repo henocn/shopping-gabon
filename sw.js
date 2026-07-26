@@ -1,21 +1,11 @@
-// LUXEMARKET Admin PWA - Service Worker v4
+// LUXEMARKET Admin PWA - Service Worker v5
 // Service Worker avec fetch handler ACTIF (obligatoire pour Chrome)
 
-var CACHE_NAME = 'luxemarket-admin-v6';
+var CACHE_NAME = 'luxemarket-admin-v9';
 
 var PRECACHE_URLS = [
-  // Pages principales management
-  '/management/dashboard.php',
-  '/management/orders/index.php',
-  '/management/orders/archive.php',
-  '/management/products/index.php',
-  '/management/products/add.php',
-  '/management/products/update.php',
-  '/management/users/index.php',
-  '/management/users/login.php',
-  '/management/gestion/index.php',
-  '/management/index.php',
-  '/management/cleanup-orders.php',
+  // Seules les ressources publiques et stables sont précachées. Les pages
+  // d'authentification dépendent de cookies et ne doivent jamais être cachées.
 
   // CSS
   '/assets/css/bootstrap.min.css',
@@ -58,7 +48,7 @@ self.addEventListener('activate', function(event) {
     caches.keys().then(function(cacheNames) {
       return Promise.all(
         cacheNames.map(function(name) {
-          if (name !== CACHE_NAME) {
+          if (name !== CACHE_NAME && name.indexOf('luxemarket-admin-') === 0) {
             return caches.delete(name);
           }
         })
@@ -91,7 +81,7 @@ self.addEventListener('fetch', function(event) {
     event.respondWith(
       caches.match(event.request).then(function(cached) {
         var fetchPromise = fetch(event.request).then(function(response) {
-          if (response && response.status === 200) {
+          if (response && response.status === 200 && !response.redirected) {
             var responseClone = response.clone();
             caches.open(CACHE_NAME).then(function(cache) {
               cache.put(event.request, responseClone);
@@ -105,8 +95,9 @@ self.addEventListener('fetch', function(event) {
     return;
   }
 
-  // Network-first avec fallback pour les pages management
-  if (requestUrl.pathname.indexOf('/management/') === 0 || requestUrl.pathname === '/manifest.json') {
+  // Le manifest peut être servi depuis le cache, mais les pages et API admin
+  // restent toujours réseau : aucune donnée privée ne doit devenir obsolète.
+  if (requestUrl.pathname === '/manifest.json') {
     event.respondWith(
       fetch(event.request).then(function(response) {
         if (response && response.status === 200) {
@@ -127,6 +118,11 @@ self.addEventListener('fetch', function(event) {
         });
       })
     );
+    return;
+  }
+
+  if (requestUrl.pathname.indexOf('/management/') === 0) {
+    event.respondWith(fetch(event.request));
     return;
   }
 
@@ -215,15 +211,14 @@ self.addEventListener('notificationclick', function(event) {
     url = event.notification.data.url;
   }
   
-  // Vérifier si l'URL est relative ou absolue
-  if (url.startsWith('http')) {
-    // URL absolue, l'utiliser telle quelle
-  } else if (url.startsWith('/')) {
-    // URL relative, ajouter le scope
-    url = new URL(url, self.registration.scope).href;
-  } else {
-    // Fallback
-    url = new URL('management/orders/', self.registration.scope).href;
+  try {
+    var parsedUrl = new URL(url, self.registration.scope);
+    if (parsedUrl.origin !== self.location.origin || parsedUrl.pathname.indexOf('/management/') !== 0) {
+      throw new Error('URL de notification non autorisée');
+    }
+    url = parsedUrl.href;
+  } catch (error) {
+    url = new URL('/management/orders/', self.location.origin).href;
   }
   
   event.waitUntil(
@@ -253,7 +248,7 @@ self.addEventListener('notificationclick', function(event) {
 // MESSAGE: Communication entre SW et pages
 // ============================================
 self.addEventListener('message', function(event) {
-  if (event.data.type === 'SUBSCRIBE_PUSH') {
+  if (event.data && event.data.type === 'SUBSCRIBE_PUSH') {
     // Gérer l'abonnement depuis la page
     var applicationServerKey = urlBase64ToUint8Array(event.data.applicationServerKey);
     
@@ -274,6 +269,33 @@ self.addEventListener('message', function(event) {
       })
     );
   }
+});
+
+// Renouvelle automatiquement un abonnement que le navigateur aurait fait
+// tourner, afin que les notifications continuent après un redémarrage.
+self.addEventListener('pushsubscriptionchange', function(event) {
+  event.waitUntil(
+    fetch('/management/orders/push-public-key.php', { credentials: 'include' })
+      .then(function(response) { return response.json(); })
+      .then(function(data) {
+        if (!data || !data.publicKey) {
+          throw new Error('Clé VAPID indisponible');
+        }
+        return self.registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(data.publicKey)
+        });
+      })
+      .then(function(subscription) {
+        var payload = subscription.toJSON();
+        return fetch('/management/orders/push-subscribe.php', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      })
+  );
 });
 
 // Fonction utilitaire pour convertir URL Base64 en Uint8Array

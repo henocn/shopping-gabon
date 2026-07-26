@@ -164,8 +164,8 @@ $products = $product->getAllProducts();
                             <td>#<?php echo $prod['product_id']; ?></td>
                             <td>
                                 <div class="d-flex align-items-center gap-2 product-main-info">
-                                    <img src="../../uploads/main/<?php echo $prod['image']; ?>"
-                                        alt="<?php echo $prod['name']; ?>" class="product-image">
+                                    <img src="../../uploads/main/<?php echo rawurlencode((string) $prod['image']); ?>"
+                                        alt="<?php echo htmlspecialchars((string) $prod['name'], ENT_QUOTES, 'UTF-8'); ?>" class="product-image">
                                     <div class="product-text">
                                         <div class="product-name-cell-admin">
                                             <?php echo htmlspecialchars($prod['name']); ?>
@@ -217,6 +217,7 @@ $products = $product->getAllProducts();
                                 </a>
                                 <form action="save.php" method="post" class="d-inline form-delete-product"
                                     onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce produit ? Cette action est irréversible.');">
+                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
                                     <input type="hidden" name="valider" value="delete">
                                     <input type="hidden" name="product_id" value="<?php echo $prod['product_id']; ?>">
                                     <button type="submit" class="btn btn-link p-0" style="color: var(--primary); padding: 1rem; border: 1px solid var(--primary);" title="Supprimer">

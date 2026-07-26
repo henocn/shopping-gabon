@@ -9,6 +9,15 @@
  */
 
 require __DIR__ . '/../../vendor/autoload.php';
+require __DIR__ . '/../../utils/middleware.php';
+
+if (PHP_SAPI !== 'cli') {
+    verifyConnection('/management/orders/');
+    checkAdminAccess($_SESSION['user_id']);
+    checkIsActive($_SESSION['user_id']);
+    http_response_code(404);
+    exit('Script disponible uniquement en ligne de commande.');
+}
 
 use src\Connectbd;
 

@@ -3,6 +3,6 @@
 // ---------------------------------------------------------------------------//
 //                           Logique de déconnexion                           //
 // ---------------------------------------------------------------------------//
-session_start();
-session_destroy();
+require_once '../../utils/admin-session.php';
+destroyAdminSession();
 header("location:login.php");

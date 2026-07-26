@@ -9,9 +9,12 @@ function updateOrder(event, orderId) {
 
   const form = event.target;
   const submitBtn = form.querySelector('button[type="submit"]');
-  const originalText = submitBtn.innerHTML;
-  submitBtn.innerHTML =
-    '<i class="bx bx-loader-alt bx-spin me-2"></i>Enregistrement...';
+  const originalContent = Array.from(submitBtn.childNodes).map((node) =>
+    node.cloneNode(true),
+  );
+  const loadingIcon = document.createElement("i");
+  loadingIcon.className = "bx bx-loader-alt bx-spin me-2";
+  submitBtn.replaceChildren(loadingIcon, document.createTextNode("Enregistrement..."));
   submitBtn.disabled = true;
 
   const formData = new FormData(form);
@@ -44,7 +47,7 @@ function updateOrder(event, orderId) {
       showNotification("Erreur lors de la mise à jour", "error");
     })
     .finally(() => {
-      submitBtn.innerHTML = originalText;
+      submitBtn.replaceChildren(...originalContent.map((node) => node.cloneNode(true)));
       submitBtn.disabled = false;
     });
 }
@@ -56,13 +59,15 @@ function showNotification(message, type = "info") {
   } alert-dismissible fade show position-fixed`;
   notification.style.cssText =
     "top: 20px; right: 20px; z-index: 1060; max-width: 300px;";
-  notification.innerHTML = `
-                <i class='bx ${
-                  type === "success" ? "bx-check-circle" : "bx-error-circle"
-                } me-2'></i>
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            `;
+  const icon = document.createElement("i");
+  icon.className = `bx ${
+    type === "success" ? "bx-check-circle" : "bx-error-circle"
+  } me-2`;
+  const closeButton = document.createElement("button");
+  closeButton.type = "button";
+  closeButton.className = "btn-close";
+  closeButton.setAttribute("data-bs-dismiss", "alert");
+  notification.append(icon, document.createTextNode(String(message)), closeButton);
 
   document.body.appendChild(notification);
 

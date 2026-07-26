@@ -81,9 +81,17 @@ var LUXEMARKET_PUSH = (function() {
                     triggerEvent('subscribed', subscription);
                 } else {
                     isSubscribed = false;
-                    // Demander la permission si on est sur une page sécurisée
-                    if (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                        requestPermissionAndSubscribe();
+                    if (Notification.permission === 'granted') {
+                        subscribeToPush().catch(function(error) {
+                            console.error('[LUXEMARKET PUSH] Failed to restore subscription:', error);
+                        });
+                    } else if (Notification.permission === 'default') {
+                        var banner = document.getElementById('push-notif-banner');
+                        if (banner) {
+                            banner.classList.remove('d-none');
+                            banner.classList.add('d-flex');
+                        }
+                        triggerEvent('permissionRequired');
                     }
                 }
             }).catch(function(error) {
@@ -97,14 +105,27 @@ var LUXEMARKET_PUSH = (function() {
     // ============================================
     
     function requestPermissionAndSubscribe() {
-        // Demander la permission
-        Notification.requestPermission(function(permission) {
-            if (permission === 'granted') {
+        return new Promise(function(resolve, reject) {
+            var permissionResolved = false;
+            var onPermission = function(permission) {
+                if (permissionResolved) return;
+                permissionResolved = true;
+                if (permission !== 'granted') {
+                    triggerEvent('permissionDenied');
+                    reject(new Error('Permission de notification refusée'));
+                    return;
+                }
                 console.log('[LUXEMARKET PUSH] Notification permission granted');
-                subscribeToPush();
-            } else {
-                console.log('[LUXEMARKET PUSH] Notification permission denied');
-                triggerEvent('permissionDenied');
+                subscribeToPush().then(resolve).catch(reject);
+            };
+
+            try {
+                var permissionResult = Notification.requestPermission(onPermission);
+                if (permissionResult && typeof permissionResult.then === 'function') {
+                    permissionResult.then(onPermission).catch(reject);
+                }
+            } catch (error) {
+                reject(error);
             }
         });
     }
@@ -116,11 +137,14 @@ var LUXEMARKET_PUSH = (function() {
     function subscribeToPush() {
         if (!applicationServerKey) {
             console.log('[LUXEMARKET PUSH] VAPID key not loaded yet, retrying...');
-            setTimeout(subscribeToPush, 1000);
-            return;
+            return new Promise(function(resolve, reject) {
+                setTimeout(function() {
+                    subscribeToPush().then(resolve).catch(reject);
+                }, 1000);
+            });
         }
 
-        navigator.serviceWorker.ready.then(function(registration) {
+        return navigator.serviceWorker.ready.then(function(registration) {
             // Convertir la clé VAPID (Base64 -> Uint8Array)
             var applicationServerKeyBytes = urlBase64ToUint8Array(applicationServerKey);
 
@@ -135,10 +159,12 @@ var LUXEMARKET_PUSH = (function() {
                 console.log('[LUXEMARKET PUSH] Successfully subscribed to push notifications');
                 triggerEvent('subscribed', subscription);
                 showSuccessMessage('Notifications activées !');
+                return subscription;
             }).catch(function(error) {
                 console.error('[LUXEMARKET PUSH] Failed to subscribe:', error);
                 triggerEvent('subscribeError', error);
                 showErrorMessage('Erreur lors de l\'abonnement: ' + error.message);
+                throw error;
             });
         });
     }
@@ -161,7 +187,8 @@ var LUXEMARKET_PUSH = (function() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-Token': window.LUXEMARKET_CSRF_TOKEN || ''
             },
             body: JSON.stringify(subscriptionData)
         }).then(function(response) {
@@ -193,7 +220,8 @@ var LUXEMARKET_PUSH = (function() {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'X-Requested-With': 'XMLHttpRequest'
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-Token': window.LUXEMARKET_CSRF_TOKEN || ''
                             },
                             body: JSON.stringify({
                                 userId: userId,
@@ -239,10 +267,16 @@ var LUXEMARKET_PUSH = (function() {
 
     function showSuccessMessage(message) {
         var banner = document.getElementById('push-notif-banner');
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(message, 'success');
+            if (banner) banner.classList.add('d-none');
+            triggerEvent('success', { message: message });
+            return;
+        }
         if (banner) {
             banner.classList.remove('d-none');
-            var span = banner.querySelector('span');
-            if (span) span.textContent = message;
+            var messageElement = banner.querySelector('[data-push-message], #push-notif-message');
+            if (messageElement) messageElement.textContent = message;
             setTimeout(function() {
                 banner.classList.add('d-none');
             }, 5000);
@@ -254,8 +288,8 @@ var LUXEMARKET_PUSH = (function() {
         var banner = document.getElementById('push-notif-banner');
         if (banner) {
             banner.classList.remove('d-none');
-            var span = banner.querySelector('span');
-            if (span) span.textContent = message;
+            var messageElement = banner.querySelector('[data-push-message], #push-notif-message');
+            if (messageElement) messageElement.textContent = message;
         }
         triggerEvent('error', { message: message });
     }
@@ -317,8 +351,26 @@ window.addEventListener('load', function() {
     var enableBtn = document.getElementById('push-enable-btn');
     if (enableBtn) {
         enableBtn.addEventListener('click', function() {
-            LUXEMARKET_PUSH.subscribe().catch(function(error) {
+            if (!window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                showErrorMessage('Les notifications nécessitent une connexion HTTPS.');
+                return;
+            }
+
+            var banner = document.getElementById('push-notif-banner');
+            enableBtn.disabled = true;
+            enableBtn.textContent = 'Activation...';
+
+            LUXEMARKET_PUSH.subscribe().then(function() {
+                enableBtn.textContent = 'Notifications activées';
+                enableBtn.classList.remove('btn-primary');
+                enableBtn.classList.add('btn-success');
+                if (banner) {
+                    setTimeout(function() { banner.classList.add('d-none'); }, 1200);
+                }
+            }).catch(function(error) {
                 console.error('Error subscribing:', error);
+                enableBtn.disabled = false;
+                enableBtn.textContent = 'Réessayer';
             });
         });
     }

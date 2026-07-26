@@ -6,6 +6,11 @@
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit('Script disponible uniquement en ligne de commande.');
+}
+
 use Minishlink\WebPush\VAPID;
 
 $keys = VAPID::createVapidKeys();

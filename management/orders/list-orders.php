@@ -20,8 +20,13 @@ const TAB_STATUSES = [
 ];
 
 try {
-    $tab = isset($_GET['tab']) ? (string) $_GET['tab'] : '';
-    $offset = isset($_GET['offset']) ? max(0, (int) $_GET['offset']) : 0;
+    $tab = isset($_GET['tab']) && is_string($_GET['tab']) ? $_GET['tab'] : '';
+    $offset = isset($_GET['offset']) && is_scalar($_GET['offset'])
+        ? filter_var($_GET['offset'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]])
+        : 0;
+    if ($offset === false) {
+        $offset = 0;
+    }
 
     if (!isset(TAB_STATUSES[$tab])) {
         http_response_code(400);

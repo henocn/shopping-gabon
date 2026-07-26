@@ -6,8 +6,26 @@ ErrorDocument 404 /error.php?code=404
 ErrorDocument 500 /error.php?code=500
 
 # Sécurité - Empêcher l'accès aux fichiers sensibles
-<FilesMatch "\.(htaccess|htpasswd|ini|log|sh|inc|bak)$">
+<FilesMatch "^(\.env|\.env\..*|vapid\.php)$|\.(htaccess|htpasswd|ini|log|sh|inc|bak)$">
     Order Allow,Deny
     Deny from all
 </FilesMatch>
 
+<IfModule mod_php.c>
+    php_value upload_max_filesize 64M
+    php_value post_max_size 64M
+    php_value max_execution_time 300
+    php_value max_input_time 300
+</IfModule>
+<IfModule mod_php7.c>
+    php_value upload_max_filesize 64M
+    php_value post_max_size 64M
+    php_value max_execution_time 300
+    php_value max_input_time 300
+</IfModule>
+<IfModule mod_php8.c>
+    php_value upload_max_filesize 64M
+    php_value post_max_size 64M
+    php_value max_execution_time 300
+    php_value max_input_time 300
+</IfModule>

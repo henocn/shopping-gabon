@@ -16,10 +16,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// Récupérer et valider la date limite
-$daysAgo = isset($_POST['days_ago']) ? (int)$_POST['days_ago'] : null;
+verifyCsrfToken();
 
-if ($daysAgo === null || $daysAgo < 1 || $daysAgo > 365) {
+// Récupérer et valider la date limite
+$daysAgo = isset($_POST['days_ago']) && is_scalar($_POST['days_ago'])
+    ? filter_var($_POST['days_ago'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 365]])
+    : false;
+
+if ($daysAgo === false) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Nombre de jours invalide (1-365)']);
     exit;
@@ -28,7 +32,9 @@ if ($daysAgo === null || $daysAgo < 1 || $daysAgo > 365) {
 // Liste blanche stricte : 'deliver' n'y figure jamais, ces commandes ne sont jamais supprimables.
 const ALLOWED_STATUSES = ['new', 'remind', 'unreachable', 'processing', 'canceled'];
 
-$requestedStatuses = isset($_POST['statuses']) ? explode(',', (string) $_POST['statuses']) : [];
+$requestedStatuses = isset($_POST['statuses']) && is_scalar($_POST['statuses'])
+    ? explode(',', (string) $_POST['statuses'])
+    : [];
 $statuses = array_values(array_intersect(array_map('trim', $requestedStatuses), ALLOWED_STATUSES));
 
 if (empty($statuses)) {

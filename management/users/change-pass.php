@@ -34,6 +34,7 @@ $success = isset($success) ? $success : '';
             <div class="auth-alert success" id="successMessage"><?= htmlspecialchars($success); ?></div>
 
             <form action="save.php" method="POST" id="changePassForm" class="auth-form">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
                 <input type="hidden" name="validate" value="change_password">
 
                 <div class="form-group">

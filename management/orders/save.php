@@ -1,5 +1,22 @@
 <?php
-session_start();
+require_once __DIR__ . '/../../utils/admin-session.php';
+require_once __DIR__ . '/../../utils/csrf.php';
+
+$requestedAction = isset($_POST['valider']) && is_string($_POST['valider'])
+    ? strtolower(trim($_POST['valider']))
+    : '';
+
+// Les commandes publiques utilisent leur session propre; les mises à jour
+// d'administration utilisent le cookie persistant de l'espace admin.
+if ($requestedAction === 'update') {
+    startAdminSession();
+} else {
+    // Si une session admin est active, la fermer avant de démarrer la session publique
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
+    }
+    session_start();
+}
 
 require("../../vendor/autoload.php");
 
@@ -9,12 +26,25 @@ use src\Order;
 use src\Pack;
 use src\Depense;
 use src\Country;
+use src\User;
 
 $cnx = Connectbd::getConnection();
 
 
-if (isset($_POST['valider'])) {
-    $connect = strtolower(htmlspecialchars($_POST['valider']));
+function orderPostString(string $key, int $maxLength = 255): string
+{
+    if (!isset($_POST[$key]) || !is_string($_POST[$key])) {
+        return '';
+    }
+
+    $value = trim($_POST[$key]);
+    return function_exists('mb_substr')
+        ? mb_substr($value, 0, $maxLength)
+        : substr($value, 0, $maxLength);
+}
+
+if (isset($_POST['valider']) && is_string($_POST['valider'])) {
+    $connect = strtolower(trim($_POST['valider']));
     $productManager = new Product($cnx);
     $packManager = new Pack($cnx);
     $orderManager = new Order($cnx);
@@ -24,18 +54,50 @@ if (isset($_POST['valider'])) {
     switch ($connect) {
 
         case 'commander':
+            verifyCsrfToken();
             if (
                 isset($_POST['product_id']) &&
                 isset($_POST['client_name']) &&
                 isset($_POST['client_country']) &&
                 isset($_POST['client_phone'])
             ) {
-                $productId = (int)($_POST['product_id'] ?? 0);
-                $selectedCountryId = (int)($_POST['client_country'] ?? 0);
+                $productId = is_scalar($_POST['product_id'])
+                    ? filter_var($_POST['product_id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])
+                    : false;
+                $selectedCountryId = is_scalar($_POST['client_country'])
+                    ? filter_var($_POST['client_country'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])
+                    : false;
+                $clientName = orderPostString('client_name', 150);
+                $clientPhone = orderPostString('client_phone', 40);
+                $clientAddress = orderPostString('client_adress', 255);
+                $clientNote = orderPostString('client_note', 1000);
+                if ($productId === false || $selectedCountryId === false || $clientName === '' || strlen($clientName) < 2 || $clientPhone === '' || strlen($clientPhone) < 5 || $clientAddress === '') {
+                    $_SESSION['order_message'] = "Données de commande invalides. Veuillez réessayer.";
+                    header("Location: " . (isset($redirectUrl) ? $redirectUrl : '../../index.php'));
+                    exit;
+                }
                 $redirectUrl = "../../index.php?id=" . $productId . ($selectedCountryId > 0 ? "&country=" . $selectedCountryId : "");
 
+                // La limite côté navigateur améliore l'UX, mais la règle doit être
+                // appliquée ici pour résister aux onglets et requêtes simultanées.
+                $orderLimitWindow = 48 * 60 * 60;
+                $orderLimits = isset($_SESSION['order_limits']) && is_array($_SESSION['order_limits'])
+                    ? $_SESSION['order_limits']
+                    : [];
+                $orderLimitState = isset($orderLimits[$productId]) && is_array($orderLimits[$productId])
+                    ? $orderLimits[$productId]
+                    : ['count' => 0, 'expires_at' => 0];
+                if ((int)($orderLimitState['expires_at'] ?? 0) <= time()) {
+                    $orderLimitState = ['count' => 0, 'expires_at' => time() + $orderLimitWindow];
+                }
+                if ((int)($orderLimitState['count'] ?? 0) >= 2) {
+                    $_SESSION['order_message'] = "La limite de 2 commandes pour ce produit est atteinte.";
+                    header("Location: " . $redirectUrl);
+                    exit;
+                }
+
                 // Anti-spam: Prevent double submissions
-                $orderHash = md5($_POST['product_id'] . $_POST['client_name'] . $_POST['client_phone']);
+                $orderHash = hash('sha256', $productId . $clientName . $clientPhone);
                 if (isset($_SESSION['last_order_hash']) && $_SESSION['last_order_hash'] === $orderHash && isset($_SESSION['last_order_time']) && (time() - $_SESSION['last_order_time']) < 60) {
                     $_SESSION['order_message'] = "Votre commande a déjà été enregistrée. Merci !";
                     header("Location: " . $redirectUrl);
@@ -44,7 +106,15 @@ if (isset($_POST['valider'])) {
                 $_SESSION['last_order_hash'] = $orderHash;
                 $_SESSION['last_order_time'] = time();
 
-                $packId = !empty($_POST['pack_id']) ? htmlspecialchars($_POST['pack_id']) : null;
+                $packId = null;
+                if (isset($_POST['pack_id']) && $_POST['pack_id'] !== '') {
+                    $packId = is_scalar($_POST['pack_id'])
+                        ? filter_var($_POST['pack_id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])
+                        : false;
+                    if ($packId === false) {
+                        $packId = null;
+                    }
+                }
                 $pack = null;
 
                 if($packId != null) {
@@ -60,7 +130,7 @@ if (isset($_POST['valider'])) {
                 }
 
                 // Le formulaire envoie l’id du pays (client_country = id). On garde cet id pour la commande.
-                $clientCountryId = (int) ($_POST['client_country'] ?? 0);
+                $clientCountryId = $selectedCountryId;
                 $countryManager = new Country($cnx);
                 $clientCountryCode = $countryManager->getCodeById($clientCountryId);
                 if (!$clientCountryId || !$clientCountryCode) {
@@ -96,11 +166,11 @@ if (isset($_POST['valider'])) {
                 $data = [
                     'product_id'    => $productId,
                     'pack_id'       => $packId,
-                    'client_name'   => $_POST['client_name'],
+                    'client_name'   => $clientName,
                     'client_country' => $clientCountryId,
-                    'client_adress' => trim((string)($_POST['client_adress'] ?? '')),
-                    'client_phone'  => trim((string)($_POST['client_phone'] ?? '')),
-                    'client_note'   => trim((string)($_POST['client_note'] ?? '')),
+                    'client_adress' => $clientAddress,
+                    'client_phone'  => $clientPhone,
+                    'client_note'   => $clientNote,
                     'purchase_price'    => $product['purchase_price'],
                     'total_price'   => !empty($pack['price']) ? $pack['price'] : $sellingPrice,
                     'unit_price'    => !empty($pack['price'])
@@ -113,11 +183,14 @@ if (isset($_POST['valider'])) {
 
 
                 if ($orderManager->CreateOrder($data)) {
+                    $orderLimitState['count'] = (int)($orderLimitState['count'] ?? 0) + 1;
+                    $_SESSION['order_limits'][$productId] = $orderLimitState;
+
                     // ── Push notification ──
                     try {
                         $push = new \src\PushNotification($cnx);
                         $push->notifyNewOrder(
-                            (string)($_POST['client_name'] ?? ''),
+                            $clientName,
                             (string)($product['name'] ?? ''),
                             isset($data['total_price']) ? (int)$data['total_price'] : null
                         );
@@ -210,8 +283,29 @@ if (isset($_POST['valider'])) {
             break;
 
         case 'update':
+            verifyCsrfToken();
+            $isAjax = isset($_POST['is_ajax']) || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && in_array(strtolower($_SERVER['HTTP_X_REQUESTED_WITH']), ['fetch', 'xmlhttprequest'], true));
+            $authenticatedUserId = filter_var($_SESSION['user_id'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            $authenticatedUser = $authenticatedUserId !== false ? (new User($cnx))->getUserById($authenticatedUserId) : null;
+            if (!$authenticatedUser || (int)($authenticatedUser['is_active'] ?? 0) !== 1 || !in_array((int)($authenticatedUser['role'] ?? 0), [0, 1], true)) {
+                if ($isAjax) {
+                    header('Content-Type: application/json', true, 403);
+                    echo json_encode(['success' => false, 'error' => 'Accès non autorisé']);
+                    exit;
+                }
+                header('Location: /error.php?code=403');
+                exit;
+            }
+
             if (isset($_POST['order_id'])) {
-                $orderId = (int)($_POST['order_id'] ?? 0);
+                $orderId = is_scalar($_POST['order_id'])
+                    ? filter_var($_POST['order_id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])
+                    : false;
+                if ($orderId === false) {
+                    header('Content-Type: application/json', true, 400);
+                    echo json_encode(['success' => false, 'error' => 'Identifiant de commande invalide']);
+                    exit;
+                }
                 $existingOrder = $orderManager->getOrderById($orderId);
 
                 if (!$existingOrder) {
@@ -230,14 +324,40 @@ if (isset($_POST['valider'])) {
                     exit;
                 }
 
+                if ((int)($authenticatedUser['role'] ?? 0) !== 1 && (int)($existingOrder['manager_id'] ?? 0) !== (int) $authenticatedUserId) {
+                    if ($isAjax) {
+                        header('Content-Type: application/json', true, 403);
+                        echo json_encode(['success' => false, 'error' => 'Commande non attribuée à cet utilisateur']);
+                        exit;
+                    }
+                    header('Location: /error.php?code=403');
+                    exit;
+                }
+
                 $allowedStatuses = ['new', 'remind', 'unreachable', 'processing', 'deliver', 'canceled'];
-                $incomingStatus = strtolower(trim((string)($_POST['newstat'] ?? '')));
+                $incomingStatus = isset($_POST['newstat']) && is_string($_POST['newstat'])
+                    ? strtolower(trim($_POST['newstat']))
+                    : '';
                 $newStatus = in_array($incomingStatus, $allowedStatuses, true)
                     ? $incomingStatus
                     : (string)$existingOrder['newstat'];
-                $updatedQuantity = (int)($_POST['quantity'] ?? $existingOrder['quantity']);
-                $updatedTotal = (float)($_POST['total_price'] ?? $existingOrder['total_price']);
-                $managerNote = trim((string)($_POST['manager_note'] ?? ''));
+                $updatedQuantityRaw = isset($_POST['quantity']) && is_scalar($_POST['quantity'])
+                    ? $_POST['quantity']
+                    : $existingOrder['quantity'];
+                $updatedQuantityInput = filter_var($updatedQuantityRaw, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+                $updatedTotalInput = $_POST['total_price'] ?? $existingOrder['total_price'];
+                $updatedTotal = is_numeric($updatedTotalInput) ? (float) $updatedTotalInput : -1;
+                $managerNote = orderPostString('manager_note', 1000);
+                if ($updatedQuantityInput === false || !is_finite($updatedTotal) || $updatedTotal < 0) {
+                    if ($isAjax) {
+                        header('Content-Type: application/json', true, 400);
+                        echo json_encode(['success' => false, 'error' => 'Valeurs de commande invalides']);
+                        exit;
+                    }
+                    header('Location: index.php?message=' . urlencode('Valeurs de commande invalides.'));
+                    exit;
+                }
+                $updatedQuantity = $updatedQuantityInput;
 
                 $data = [
                     'id'           => $orderId,
@@ -257,11 +377,13 @@ if (isset($_POST['valider'])) {
                 }
 
                 // Enregistrer les frais de livraison si fournis
-                if ($newStatus === 'deliver' && isset($_POST['delivery_fee']) && $_POST['delivery_fee'] > 0) {
+                $deliveryFeeInput = $_POST['delivery_fee'] ?? null;
+                $deliveryFee = is_numeric($deliveryFeeInput) ? (float) $deliveryFeeInput : 0;
+                if ($newStatus === 'deliver' && is_finite($deliveryFee) && $deliveryFee > 0) {
                     $depenseData = [
                         'type'        => 'livraison',
                         'product_id'  => (int)$existingOrder['product_id'],
-                        'cout'        => (int)$_POST['delivery_fee'],
+                        'cout'        => (int) $deliveryFee,
                         'date'        => date('Y-m-d H:i:s'),
                         'description' => 'Livraison'
                     ];

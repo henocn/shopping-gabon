@@ -8,6 +8,11 @@
 
 require __DIR__ . '/../../vendor/autoload.php';
 
+if (PHP_SAPI !== 'cli') {
+    http_response_code(404);
+    exit('Script disponible uniquement en ligne de commande.');
+}
+
 use src\Connectbd;
 
 header('Content-Type: text/plain; charset=utf-8');

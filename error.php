@@ -1,7 +1,11 @@
 <?php
 session_start();
 
-$error_code = isset($_GET['code']) ? (int)$_GET['code'] : 500;
+$allowedErrorCodes = [400, 401, 403, 404, 500];
+$errorCodeInput = isset($_GET['code']) && is_scalar($_GET['code'])
+    ? filter_var($_GET['code'], FILTER_VALIDATE_INT)
+    : false;
+$error_code = in_array($errorCodeInput, $allowedErrorCodes, true) ? $errorCodeInput : 500;
 
 $error_messages = [
     400 => [

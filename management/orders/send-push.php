@@ -5,6 +5,12 @@
  */
 
 require '../../vendor/autoload.php';
+require '../../utils/middleware.php';
+
+verifyConnection('/management/orders/');
+checkAdminAccess($_SESSION['user_id']);
+checkIsActive($_SESSION['user_id']);
+verifyCsrfToken();
 
 use src\Connectbd;
 
@@ -45,10 +51,14 @@ $body = $input['body'] ?? 'Une nouvelle commande vient d\'être passée.';
 $orderId = $input['orderId'] ?? null;
 $userId = $input['userId'] ?? null;
 $url = $input['url'] ?? '/management/orders/';
+$title = is_string($title) ? mb_substr(trim($title), 0, 120) : 'Nouvelle commande LUXEMARKET';
+$body = is_string($body) ? mb_substr(trim($body), 0, 500) : 'Une nouvelle commande vient d\'être passée.';
+$url = is_string($url) && str_starts_with($url, '/management/') ? $url : '/management/orders/';
 
 // Si userId n'est pas fourni, envoyer à tous les administrateurs
 if (!$userId) {
     $stmt = $cnx->prepare("SELECT DISTINCT user_id FROM push_subscriptions WHERE user_id IN (SELECT user_id FROM users WHERE role = 1)");
+    $stmt->execute();
 } else {
     $stmt = $cnx->prepare("SELECT user_id FROM push_subscriptions WHERE user_id = ?");
     $stmt->execute([$userId]);
@@ -99,7 +109,7 @@ echo json_encode([
 function sendPushNotification($subscription, $payload, $privateKey) {
     $endpoint = $subscription['endpoint'];
     $p256dh = $subscription['p256dh'];
-    $auth = $subscription['auth_key'];
+    $auth = $subscription['auth'];
 
     // Créer le JWT pour l'authentification VAPID
     $authToken = generateVAPIDAuthToken($privateKey);

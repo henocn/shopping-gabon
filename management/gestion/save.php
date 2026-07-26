@@ -16,22 +16,48 @@ $finance = new FinanceManager($cnx);
 $redirect = 'index.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = isset($_POST['action']) ? trim($_POST['action']) : '';
+    verifyCsrfToken();
+    $action = isset($_POST['action']) && is_string($_POST['action'])
+        ? trim($_POST['action'])
+        : '';
 
-    if ($action === 'delete' && isset($_POST['expense_id']) && is_numeric($_POST['expense_id'])) {
+    if ($action === 'delete' && isset($_POST['expense_id']) && is_scalar($_POST['expense_id']) && filter_var($_POST['expense_id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])) {
         $finance->deleteExpense((int) $_POST['expense_id']);
         header('Location: ' . $redirect . '?deleted=1');
         exit;
     }
 
     if ($action === 'add') {
-        $type = isset($_POST['type']) ? trim($_POST['type']) : 'autres';
-        $amount = isset($_POST['cout']) ? (float) str_replace(',', '.', $_POST['cout']) : 0;
-        $description = isset($_POST['description']) ? trim($_POST['description']) : null;
-        $productId = isset($_POST['product_id']) && $_POST['product_id'] !== '' ? (int) $_POST['product_id'] : null;
-        $date = isset($_POST['date']) && $_POST['date'] !== '' ? $_POST['date'] . ' ' . date('H:i:s') : null;
+        $allowedTypes = ['livraison', 'frais', 'products', 'users', 'campagn', 'others'];
+        $type = isset($_POST['type']) && is_string($_POST['type']) ? trim($_POST['type']) : '';
+        $amountInput = isset($_POST['cout']) && is_scalar($_POST['cout'])
+            ? str_replace(',', '.', (string) $_POST['cout'])
+            : '';
+        $amount = is_numeric($amountInput) ? (float) $amountInput : 0;
+        $description = isset($_POST['description']) && is_string($_POST['description'])
+            ? trim($_POST['description'])
+            : null;
+        $productId = null;
+        if (isset($_POST['product_id']) && $_POST['product_id'] !== '') {
+            $productId = is_scalar($_POST['product_id'])
+                ? filter_var($_POST['product_id'], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])
+                : false;
+            if ($productId === false) {
+                $productId = null;
+            }
+        }
+        $date = null;
+        if (isset($_POST['date']) && $_POST['date'] !== '') {
+            $dateInput = is_string($_POST['date']) ? $_POST['date'] : '';
+            $dateObject = DateTime::createFromFormat('!Y-m-d', $dateInput);
+            if (!$dateObject || $dateObject->format('Y-m-d') !== $dateInput) {
+                header('Location: ' . $redirect . '?error=' . urlencode('Date invalide'));
+                exit;
+            }
+            $date = $dateInput . ' ' . date('H:i:s');
+        }
 
-        if ($amount > 0) {
+        if (in_array($type, $allowedTypes, true) && is_finite($amount) && $amount > 0 && strlen($description ?? '') <= 1000) {
             try {
                 $finance->createExpense($type, $amount, $description, $productId, null, $date);
                 header('Location: ' . $redirect . '?added=1');

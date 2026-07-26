@@ -7,6 +7,7 @@ var OfflineSyncManager = (function() {
     var dbName = 'LuxemarketOfflineDB';
     var storeName = 'offlineActions';
     var db;
+    var dbReadyPromise;
 
     // Initialisation IndexedDB
     function initDB() {
@@ -41,12 +42,9 @@ var OfflineSyncManager = (function() {
 
     // Sauvegarder une action hors ligne
     function saveAction(url, formData, orderId, formValues) {
-        return new Promise(function(resolve, reject) {
-            if (!db) {
-                reject(new Error("DB non initialisée"));
-                return;
-            }
-
+        var ready = db ? Promise.resolve(db) : (dbReadyPromise || initDB());
+        return ready.then(function() {
+            if (!db) throw new Error('DB non initialisée');
             var transaction = db.transaction([storeName], 'readwrite');
             var store = transaction.objectStore(storeName);
             
@@ -58,21 +56,20 @@ var OfflineSyncManager = (function() {
                 timestamp: new Date().getTime()
             };
 
-            var request = store.add(action);
-            
-            request.onsuccess = function() {
-                console.log('[OfflineSync] Action sauvegardée pour la commande ' + orderId);
-                updatePendingCountUI();
-                
-                if (typeof window.showNotification === 'function') {
-                    window.showNotification('Mode hors-ligne : Modification sauvegardée localement.', 'warning', 5000);
-                }
-                resolve();
-            };
-
-            request.onerror = function() {
-                reject(new Error("Erreur de sauvegarde"));
-            };
+            return new Promise(function(resolve, reject) {
+                var request = store.add(action);
+                request.onsuccess = function() {
+                    console.log('[OfflineSync] Action sauvegardée pour la commande ' + orderId);
+                    updatePendingCountUI();
+                    if (typeof window.showNotification === 'function') {
+                        window.showNotification('Mode hors-ligne : Modification sauvegardée localement.', 'warning');
+                    }
+                    resolve();
+                };
+                request.onerror = function() {
+                    reject(new Error('Erreur de sauvegarde'));
+                };
+            });
         });
     }
 
@@ -171,7 +168,9 @@ var OfflineSyncManager = (function() {
             
             if (actions.length > 0) {
                 badge.classList.remove('d-none');
-                badge.innerHTML = '<i class="bx bx-wifi-off me-1"></i> ' + actions.length + ' en attente';
+                var offlineIcon = document.createElement('i');
+                offlineIcon.className = 'bx bx-wifi-off me-1';
+                badge.replaceChildren(offlineIcon, document.createTextNode(' ' + String(actions.length) + ' en attente'));
                 badge.className = 'badge bg-danger rounded-pill d-flex align-items-center ms-2';
             } else {
                 badge.classList.add('d-none');
@@ -185,7 +184,9 @@ var OfflineSyncManager = (function() {
         if (isSyncing) {
             badge.classList.remove('d-none', 'bg-danger');
             badge.classList.add('bg-warning', 'text-dark');
-            badge.innerHTML = '<i class="bx bx-loader-alt bx-spin me-1"></i> Sync...';
+            var loadingIcon = document.createElement('i');
+            loadingIcon.className = 'bx bx-loader-alt bx-spin me-1';
+            badge.replaceChildren(loadingIcon, document.createTextNode(' Sync...'));
         } else {
             updatePendingCountUI();
         }
@@ -205,7 +206,7 @@ var OfflineSyncManager = (function() {
     });
 
     // Init
-    initDB().then(function() {
+    dbReadyPromise = initDB().then(function() {
         // Tenter une synchro au démarrage au cas où
         setTimeout(syncAll, 2000);
     });
