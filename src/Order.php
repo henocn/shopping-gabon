@@ -155,9 +155,9 @@ class Order
     }
 
     /**
-     * Transfère les commandes non finalisées (pas encore livrées/annulées) d'un
-     * assistant vers son remplaçant pour un produit donné — utilisé quand l'admin
-     * change l'assistant assigné à un produit pour un pays.
+     * Transfère toutes les commandes d'un assistant vers son remplaçant pour un
+     * produit. L'historique doit suivre la nouvelle assistante, y compris pour
+     * les commandes livrées ou annulées.
      */
     public function reassignPendingOrders(int $productId, int $oldManagerId, int $newManagerId): int
     {
@@ -165,8 +165,7 @@ class Order
             SET manager_id = :new_manager_id,
                 updated_at = :updated_at
             WHERE product_id = :product_id
-              AND manager_id = :old_manager_id
-              AND newstat NOT IN ('deliver', 'canceled')";
+              AND manager_id = :old_manager_id";
 
         $req = $this->bd->prepare($sql);
         $req->execute([
@@ -177,6 +176,123 @@ class Order
         ]);
 
         return $req->rowCount();
+    }
+
+    /**
+     * Transfère l'historique complet d'une assistante vers sa remplaçante.
+     */
+    public function reassignManagerOrders(int $oldManagerId, int $newManagerId): int
+    {
+        if ($oldManagerId < 1 || $newManagerId < 1 || $oldManagerId === $newManagerId) {
+            throw new \InvalidArgumentException("Assistantes source ou destination invalides.");
+        }
+
+        $req = $this->bd->prepare(
+            "UPDATE orders
+             SET manager_id = :new_manager_id, updated_at = :updated_at
+             WHERE manager_id = :old_manager_id"
+        );
+        $req->execute([
+            'new_manager_id' => $newManagerId,
+            'old_manager_id' => $oldManagerId,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+
+        return $req->rowCount();
+    }
+
+    /**
+     * Réattribue les commandes du produit qui appartiennent à une assistante
+     * retirée (ou qui sont encore non assignées). Le même pays est privilégié ;
+     * à défaut, la première assistante sélectionnée reçoit la commande.
+     */
+    public function reassignProductOrders(int $productId, array $managerIds): int
+    {
+        $managerIds = array_values(array_unique(array_filter(
+            array_map('intval', $managerIds),
+            static fn (int $id): bool => $id > 0
+        )));
+
+        if ($productId < 1 || $managerIds === []) {
+            throw new \InvalidArgumentException('Produit ou liste des assistantes invalide.');
+        }
+
+        $placeholders = implode(',', array_fill(0, count($managerIds), '?'));
+        $managerStmt = $this->bd->prepare(
+            "SELECT u.id, c.id AS country_id
+             FROM users u
+             LEFT JOIN countries c
+               ON (u.country = CAST(c.id AS CHAR)
+                   OR u.country = c.code
+                   OR u.country = c.phone_code)
+             WHERE u.id IN ($placeholders)
+               AND u.role = 0
+               AND u.is_active = 1"
+        );
+        $managerStmt->execute($managerIds);
+        $managers = $managerStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if (count($managers) !== count($managerIds)) {
+            throw new \InvalidArgumentException('Une assistante sélectionnée est invalide ou inactive.');
+        }
+
+        $fallbackManagerId = (int) $managers[0]['id'];
+        $managerByCountry = [];
+        foreach ($managers as $manager) {
+            $countryId = (int) ($manager['country_id'] ?? 0);
+            if ($countryId > 0 && !isset($managerByCountry[$countryId])) {
+                $managerByCountry[$countryId] = (int) $manager['id'];
+            }
+        }
+
+        $ordersStmt = $this->bd->prepare(
+            "SELECT id, client_country
+             FROM orders
+             WHERE product_id = ?
+               AND manager_id NOT IN ($placeholders)"
+        );
+        $ordersStmt->execute(array_merge([$productId], $managerIds));
+        $orders = $ordersStmt->fetchAll(PDO::FETCH_ASSOC);
+        if ($orders === []) {
+            return 0;
+        }
+
+        $startedTransaction = !$this->bd->inTransaction();
+        if ($startedTransaction) {
+            $this->bd->beginTransaction();
+        }
+
+        try {
+            $updateStmt = $this->bd->prepare(
+                "UPDATE orders
+                 SET manager_id = :manager_id, updated_at = :updated_at
+                 WHERE id = :order_id"
+            );
+            $updatedAt = date('Y-m-d H:i:s');
+            $updatedCount = 0;
+
+            foreach ($orders as $order) {
+                $countryId = (int) ($order['client_country'] ?? 0);
+                $targetManagerId = $managerByCountry[$countryId] ?? $fallbackManagerId;
+                $updateStmt->execute([
+                    'manager_id' => $targetManagerId,
+                    'updated_at' => $updatedAt,
+                    'order_id' => (int) $order['id'],
+                ]);
+                $updatedCount += $updateStmt->rowCount();
+            }
+
+            if ($startedTransaction) {
+                $this->bd->commit();
+            }
+
+            return $updatedCount;
+        } catch (\Throwable $error) {
+            if ($startedTransaction && $this->bd->inTransaction()) {
+                $this->bd->rollBack();
+            }
+            throw $error;
+        }
     }
 
     /**
@@ -192,16 +308,16 @@ class Order
     }
 
     /**
-     * Retire un assistant de ses commandes non finalisées (manager_id = 0, pool
-     * "non assigné" visible par l'admin) — utilisé avant de supprimer son compte.
+     * Retire une assistante de toutes ses commandes lorsqu'aucune remplaçante
+     * n'existe. Cela évite de conserver un manager_id pointant vers un compte
+     * supprimé.
      */
     public function unassignManager(int $managerId): int
     {
         $sql = "UPDATE orders
             SET manager_id = 0,
                 updated_at = :updated_at
-            WHERE manager_id = :manager_id
-              AND newstat NOT IN ('deliver', 'canceled')";
+            WHERE manager_id = :manager_id";
 
         $req = $this->bd->prepare($sql);
         $req->execute([

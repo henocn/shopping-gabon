@@ -153,16 +153,69 @@ if (isset($_POST['validate'])) {
             ) {
                 $user_id = (int)$_POST['user_id'];
 
-                // Libère les commandes en cours de cet assistant (pool "non assigné",
-                // visible par l'admin) avant de supprimer son compte — sinon elles
-                // restent orphelines et invisibles pour tout le monde.
-                $orderManager = new Order($cnx);
-                $orderManager->unassignManager($user_id);
+                $deletedUser = $manager->getUserById($user_id);
+                if (!$deletedUser) {
+                    redirect('index.php', "Utilisateur introuvable.");
+                }
 
-                if ($manager->deleteUser($user_id)) {
-                    redirect('index.php', "Utilisateur supprimé avec succès !");
-                } else {
-                    redirect('index.php', "Erreur lors de la suppression de l'utilisateur.");
+                $replacementManagerId = 0;
+                if ((int) ($deletedUser['role'] ?? 1) === 0) {
+                    // Préférer une assistante active du même pays. S'il n'en
+                    // existe pas, prendre une autre assistante active.
+                    $replacementStmt = $cnx->prepare(
+                        "SELECT id
+                         FROM users
+                         WHERE role = 0
+                           AND is_active = 1
+                           AND id <> :deleted_id
+                         ORDER BY CASE WHEN country = :deleted_country THEN 0 ELSE 1 END, id
+                         LIMIT 1"
+                    );
+                    $replacementStmt->execute([
+                        'deleted_id' => $user_id,
+                        'deleted_country' => (string) ($deletedUser['country'] ?? ''),
+                    ]);
+                    $replacementManagerId = (int) ($replacementStmt->fetchColumn() ?: 0);
+                }
+
+                $cnx->beginTransaction();
+                try {
+                    $orderManager = new Order($cnx);
+                    $transferredOrders = 0;
+
+                    if ($replacementManagerId > 0) {
+                        $transferredOrders = $orderManager->reassignManagerOrders($user_id, $replacementManagerId);
+
+                        // La remplaçante récupère aussi tous les produits de
+                        // l'ancien compte, sans créer de doublon.
+                        $productTransfer = $cnx->prepare(
+                            "INSERT IGNORE INTO product_managers (product_id, manager_id)
+                             SELECT product_id, :replacement_id
+                             FROM product_managers
+                             WHERE manager_id = :deleted_id"
+                        );
+                        $productTransfer->execute([
+                            'replacement_id' => $replacementManagerId,
+                            'deleted_id' => $user_id,
+                        ]);
+                    } else {
+                        $transferredOrders = $orderManager->unassignManager($user_id);
+                    }
+
+                    if (!$manager->deleteUser($user_id)) {
+                        throw new RuntimeException("La suppression de l'utilisateur a échoué.");
+                    }
+
+                    $cnx->commit();
+                    $message = $replacementManagerId > 0
+                        ? "Utilisateur supprimé : {$transferredOrders} commande(s) transférée(s) à l'assistante remplaçante."
+                        : "Utilisateur supprimé : {$transferredOrders} commande(s) placée(s) dans les non assignées.";
+                    redirect('index.php', $message);
+                } catch (Throwable $error) {
+                    if ($cnx->inTransaction()) {
+                        $cnx->rollBack();
+                    }
+                    redirect('index.php', "Erreur lors de la suppression : " . $error->getMessage());
                 }
             } else {
                 redirect('index.php', "Données invalides pour la suppression de l'utilisateur.");

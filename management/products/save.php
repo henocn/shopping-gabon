@@ -39,6 +39,51 @@ function safeStoredUploadName($value): string
     return $name === $value && strpos($name, '..') === false ? $name : '';
 }
 
+/**
+ * Valide côté serveur que les identifiants reçus correspondent bien à des
+ * assistantes actives. Un produit ne doit jamais être enregistré sans
+ * assistante à cause d'une valeur de formulaire vide ou obsolète.
+ */
+function validatedAssistantIds(PDO $cnx, $values): array
+{
+    if (!is_array($values)) {
+        throw new InvalidArgumentException('Sélectionnez au moins une assistante.');
+    }
+
+    $ids = [];
+    foreach ($values as $value) {
+        if (!is_scalar($value)) {
+            continue;
+        }
+        $id = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($id !== false) {
+            $ids[] = (int) $id;
+        }
+    }
+    $ids = array_values(array_unique($ids));
+
+    if ($ids === []) {
+        throw new InvalidArgumentException('Sélectionnez au moins une assistante.');
+    }
+
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $cnx->prepare(
+        "SELECT id
+         FROM users
+         WHERE id IN ($placeholders)
+           AND role = 0
+           AND is_active = 1"
+    );
+    $stmt->execute($ids);
+    $validIds = array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
+
+    if (count($validIds) !== count($ids)) {
+        throw new InvalidArgumentException('Une assistante sélectionnée est invalide ou inactive.');
+    }
+
+    return $ids;
+}
+
 
 if (!isset($_POST['valider'])) {
     header('Location: index.php?error=' . urlencode("Action non spécifiée"));
@@ -97,6 +142,12 @@ switch ($action) {
             : false;
         if ($nameInput === '' || strlen($nameInput) > 255 || !is_finite($purchasePrice) || $purchasePrice < 0 || !is_finite($shippingPrice) || $shippingPrice < 0 || $quantityInput === false) {
             header('Location: add.php?error=' . urlencode('Données produit invalides'));
+            exit;
+        }
+        try {
+            $selectedManagerIds = validatedAssistantIds($cnx, $_POST['manager_ids'] ?? null);
+        } catch (InvalidArgumentException $error) {
+            header('Location: add.php?error=' . urlencode($error->getMessage()));
             exit;
         }
 
@@ -158,10 +209,7 @@ switch ($action) {
                 'carousel5' => $carouselImages[4],
             ];
             
-            // Ajouter les managers
-            if (isset($_POST['manager_ids']) && is_array($_POST['manager_ids']) && !empty($_POST['manager_ids'])) {
-                $productData['manager_ids'] = $_POST['manager_ids'];
-            }
+            $productData['manager_ids'] = $selectedManagerIds;
             
             // Ajouter les pays avec prix
             if (isset($_POST['country_ids']) && is_array($_POST['country_ids']) && !empty($_POST['country_ids'])) {
@@ -177,8 +225,7 @@ switch ($action) {
                 }
             }
 
-            $manager->createProduct($productData);
-            $productId = $manager->GetLastProductId();
+            $productId = $manager->createProduct($productData);
 
             if ($productId) {
                 // Traitement des caractéristiques
@@ -300,6 +347,12 @@ switch ($action) {
                 header('Location: update.php?id=' . (int) $productId . '&error=' . urlencode('Données produit invalides'));
                 exit;
             }
+            try {
+                $selectedManagerIds = validatedAssistantIds($cnx, $_POST['manager_ids'] ?? null);
+            } catch (InvalidArgumentException $error) {
+                header('Location: update.php?id=' . (int) $productId . '&error=' . urlencode($error->getMessage()));
+                exit;
+            }
 
             // Création des dossiers d'upload si nécessaire
             $uploadDirs = [
@@ -411,57 +464,33 @@ switch ($action) {
 
                 $manager->updateProduct($productId, $productData);
                 
-                // Mettre à jour les managers
-                if (isset($_POST['manager_ids']) && is_array($_POST['manager_ids'])) {
-                    // Récupérer les managers actuels (avec leur pays, pour la réattribution des commandes en cours)
-                    $currentManagers = $manager->getProductManagers($productId);
-                    $currentManagerIds = array_column($currentManagers, 'id');
-                    $newManagerIds = array_map('intval', $_POST['manager_ids']);
+                // Mettre à jour les assistantes et les commandes en une seule
+                // transaction. Toutes les anciennes commandes suivent ensuite
+                // une assistante encore sélectionnée, même si son pays diffère.
+                $currentManagers = $manager->getProductManagers($productId);
+                $currentManagerIds = array_map('intval', array_column($currentManagers, 'id'));
+                $newManagerIds = $selectedManagerIds;
 
-                    $removedManagerIds = array_filter($currentManagerIds, fn($id) => !in_array($id, $newManagerIds));
-                    $addedManagerIds = array_filter($newManagerIds, fn($id) => !in_array($id, $currentManagerIds));
+                $removedManagerIds = array_values(array_diff($currentManagerIds, $newManagerIds));
+                $addedManagerIds = array_values(array_diff($newManagerIds, $currentManagerIds));
 
-                    // Supprimer les managers qui ne sont plus sélectionnés
+                $cnx->beginTransaction();
+                try {
                     foreach ($removedManagerIds as $managerId) {
                         $manager->removeProductManager($productId, $managerId);
                     }
-
-                    // Ajouter les nouveaux managers
                     foreach ($addedManagerIds as $managerId) {
                         $manager->addProductManager($productId, $managerId);
                     }
 
-                    // Réattribuer les commandes pas encore finalisées (livrées/annulées) d'un
-                    // assistant retiré vers son remplaçant du même pays : sans ça, ces commandes
-                    // restent assignées à un assistant qui n'a plus le produit et n'apparaissent
-                    // plus dans la file de personne tant qu'une nouvelle commande n'arrive pas.
-                    if (!empty($removedManagerIds) && !empty($addedManagerIds)) {
-                        $countryByManagerId = [];
-                        foreach ($currentManagers as $cm) {
-                            $countryByManagerId[(int)$cm['id']] = $cm['country_code'] ?? null;
-                        }
-                        $stmtManagerCountry = $cnx->prepare(
-                            "SELECT c.code AS country_code FROM users u LEFT JOIN countries c ON u.country = c.id WHERE u.id = :id"
-                        );
-                        foreach ($addedManagerIds as $newManagerId) {
-                            $stmtManagerCountry->execute(['id' => $newManagerId]);
-                            $countryByManagerId[$newManagerId] = $stmtManagerCountry->fetchColumn() ?: null;
-                        }
-
-                        $orderManager = new Order($cnx);
-                        foreach ($removedManagerIds as $oldManagerId) {
-                            $oldCountry = $countryByManagerId[$oldManagerId] ?? null;
-                            if (!$oldCountry) {
-                                continue;
-                            }
-                            foreach ($addedManagerIds as $newManagerId) {
-                                if (($countryByManagerId[$newManagerId] ?? null) === $oldCountry) {
-                                    $orderManager->reassignPendingOrders($productId, $oldManagerId, $newManagerId);
-                                    break;
-                                }
-                            }
-                        }
+                    $orderManager = new Order($cnx);
+                    $orderManager->reassignProductOrders($productId, $newManagerIds);
+                    $cnx->commit();
+                } catch (Throwable $error) {
+                    if ($cnx->inTransaction()) {
+                        $cnx->rollBack();
                     }
+                    throw $error;
                 }
                 
                 // Mettre à jour les pays et prix

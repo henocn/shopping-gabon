@@ -124,35 +124,59 @@ class Product
 
     public function createProduct($data)
     {
-        $req = $this->bd->prepare("INSERT INTO products (name, purchase_price, shipping_price, quantity, image, description, carousel1, carousel2, carousel3, carousel4, carousel5) VALUES (:name, :purchase_price, :shipping_price, :quantity, :image, :description, :carousel1, :carousel2, :carousel3, :carousel4, :carousel5)");
-        $req->execute([
-            'name'   => $data['name'],
-            'purchase_price'    => $data['purchase_price'],
-            'shipping_price'    => $data['shipping_price'],
-            'quantity'          => $data['quantity'],
-            'image'     => $data['image'],
-            'description' => $data['description'],
-            'carousel1' => $data['carousel1'] ?? '',
-            'carousel2' => $data['carousel2'] ?? '',
-            'carousel3' => $data['carousel3'] ?? '',
-            'carousel4' => $data['carousel4'] ?? '',
-            'carousel5' => $data['carousel5'] ?? '',
-        ]);
-        
-        $lastProductId = $this->GetLastProductId();
-        
-        // Ajouter les managers si fournis
-        if (isset($data['manager_ids']) && is_array($data['manager_ids'])) {
-            foreach ($data['manager_ids'] as $manager_id) {
-                $this->addProductManager($lastProductId, $manager_id);
-            }
+        $startedTransaction = !$this->bd->inTransaction();
+        if ($startedTransaction) {
+            $this->bd->beginTransaction();
         }
-        
-        // Ajouter les pays avec prix de vente si fournis
-        if (isset($data['product_countries']) && is_array($data['product_countries'])) {
-            foreach ($data['product_countries'] as $country_data) {
-                $this->addProductCountry($lastProductId, $country_data['country_id'], $country_data['selling_price']);
+
+        try {
+            $req = $this->bd->prepare("INSERT INTO products (name, ar_name, purchase_price, shipping_price, quantity, image, description, ar_description, carousel1, carousel2, carousel3, carousel4, carousel5) VALUES (:name, :ar_name, :purchase_price, :shipping_price, :quantity, :image, :description, :ar_description, :carousel1, :carousel2, :carousel3, :carousel4, :carousel5)");
+            $req->execute([
+                'name'   => $data['name'],
+                'ar_name' => $data['ar_name'] ?? $data['name'],
+                'purchase_price'    => $data['purchase_price'],
+                'shipping_price'    => $data['shipping_price'],
+                'quantity'          => $data['quantity'],
+                'image'     => $data['image'],
+                'description' => $data['description'],
+                'ar_description' => $data['ar_description'] ?? $data['description'] ?? '',
+                'carousel1' => $data['carousel1'] ?? '',
+                'carousel2' => $data['carousel2'] ?? '',
+                'carousel3' => $data['carousel3'] ?? '',
+                'carousel4' => $data['carousel4'] ?? '',
+                'carousel5' => $data['carousel5'] ?? '',
+            ]);
+
+            // lastInsertId() appartient à cette connexion. Contrairement à
+            // SELECT MAX(id), il ne peut pas récupérer le produit créé en même
+            // temps par un autre administrateur.
+            $lastProductId = (int) $this->bd->lastInsertId();
+            if ($lastProductId < 1) {
+                throw new \RuntimeException("Impossible d'identifier le produit créé.");
             }
+
+            if (isset($data['manager_ids']) && is_array($data['manager_ids'])) {
+                foreach ($data['manager_ids'] as $manager_id) {
+                    $this->addProductManager($lastProductId, (int) $manager_id);
+                }
+            }
+
+            if (isset($data['product_countries']) && is_array($data['product_countries'])) {
+                foreach ($data['product_countries'] as $country_data) {
+                    $this->addProductCountry($lastProductId, $country_data['country_id'], $country_data['selling_price']);
+                }
+            }
+
+            if ($startedTransaction) {
+                $this->bd->commit();
+            }
+
+            return $lastProductId;
+        } catch (\Throwable $error) {
+            if ($startedTransaction && $this->bd->inTransaction()) {
+                $this->bd->rollBack();
+            }
+            throw $error;
         }
     }
     
@@ -205,14 +229,19 @@ class Product
     }
 
     /**
-     * Retourne les managers du produit avec leur pays (code). Le pays du manager vient de users.country (code) relié à countries.
+     * Retourne les managers du produit avec leur pays. Les anciennes données
+     * peuvent contenir l'id, le code ou l'indicatif du pays dans users.country.
      */
     public function getProductManagers($productId)
     {
-        $req = $this->bd->prepare("SELECT u.id, u.name, u.email, c.code AS country_code, c.name AS country_name
+        $req = $this->bd->prepare("SELECT u.id, u.name, u.email, u.is_active,
+                   c.id AS country_id, c.code AS country_code, c.name AS country_name
             FROM users u
             INNER JOIN product_managers pm ON u.id = pm.manager_id
-            LEFT JOIN countries c ON u.country = c.id
+            LEFT JOIN countries c
+              ON (u.country = CAST(c.id AS CHAR)
+                  OR u.country = c.code
+                  OR u.country = c.phone_code)
             WHERE pm.product_id = :product_id");
         $req->execute(['product_id' => $productId]);
         return $req->fetchAll(PDO::FETCH_ASSOC);

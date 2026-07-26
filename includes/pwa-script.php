@@ -17,7 +17,6 @@
         var dismissBtn = document.getElementById('pwa-install-dismiss');
         var installText = banner ? banner.querySelector('.pwa-install-text') : null;
         var promptShown = false;
-        var fallbackTimer = null;
 
         if (!banner || !installBtn || !dismissBtn) return;
 
@@ -43,35 +42,16 @@
             installText.replaceChildren(title, text);
         }
 
-        function showManualGuide() {
-            if (deferredPrompt || isStandalone || promptShown) return;
-
-            var isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
-            setInstallMessage(isIos
-                ? 'Touchez Partager puis Ajouter à l’écran d’accueil.'
-                : 'Ouvrez le menu ⋮ puis Ajouter à l’écran d’accueil.');
-            installBtn.textContent = 'Comment faire ?';
-            installBtn.onclick = function() {
-                setInstallMessage(isIos
-                    ? 'Dans Safari : Partager → Ajouter à l’écran d’accueil.'
-                    : 'Dans Chrome : menu ⋮ → Installer l’application ou Ajouter à l’écran d’accueil.');
-                installBtn.textContent = 'J’ai compris';
-                installBtn.onclick = hideBanner;
-            };
-            showBanner();
-        }
-
         function showNativePrompt(e) {
             e.preventDefault();
             if (isStandalone) return;
 
             deferredPrompt = e;
-            if (fallbackTimer) window.clearTimeout(fallbackTimer);
             setInstallMessage('Gérez vos commandes plus rapidement.');
             installBtn.textContent = 'Installer';
             installBtn.onclick = function() {
                 if (!deferredPrompt) {
-                    showManualGuide();
+                    hideBanner();
                     return;
                 }
 
@@ -81,11 +61,9 @@
                 promptEvent.userChoice.then(function(choiceResult) {
                     if (choiceResult.outcome === 'accepted') {
                         hideBanner();
-                    } else {
-                        showManualGuide();
                     }
                 }).catch(function() {
-                    showManualGuide();
+                    hideBanner();
                 });
             };
             showBanner();
@@ -96,18 +74,12 @@
         dismissBtn.addEventListener('click', function() {
             hideBanner();
             deferredPrompt = null;
-            if (fallbackTimer) window.clearTimeout(fallbackTimer);
         });
 
         window.addEventListener('appinstalled', function() {
             hideBanner();
             deferredPrompt = null;
-            if (fallbackTimer) window.clearTimeout(fallbackTimer);
         });
-
-        if (!isStandalone) {
-            fallbackTimer = window.setTimeout(showManualGuide, 2500);
-        }
 
     })();
 </script>

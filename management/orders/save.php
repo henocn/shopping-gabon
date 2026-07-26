@@ -156,11 +156,24 @@ if (isset($_POST['valider']) && is_string($_POST['valider'])) {
                 // Manager du produit pour ce pays uniquement (assistant dont le pays = pays du client)
                 $productManagers = $productManager->getProductManagers($productId);
                 $managerId = 0;
+                $fallbackManagerId = 0;
                 foreach ($productManagers as $manager) {
+                    if ((int) ($manager['is_active'] ?? 0) !== 1) {
+                        continue;
+                    }
+                    if ($fallbackManagerId === 0) {
+                        $fallbackManagerId = (int) $manager['id'];
+                    }
                     if (isset($manager['country_code']) && (string) $manager['country_code'] === $clientCountryCode) {
                         $managerId = (int) $manager['id'];
                         break;
                     }
+                }
+                // Si aucune assistante du même pays n'est disponible, utiliser
+                // l'assistante active assignée au produit au lieu de laisser la
+                // commande avec manager_id = 0.
+                if ($managerId === 0) {
+                    $managerId = $fallbackManagerId;
                 }
 
                 $data = [

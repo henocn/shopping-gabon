@@ -87,7 +87,7 @@ class User
                    c.name AS country_name, COALESCE(c.phone_code, '') AS phone_code
             FROM users u
             LEFT JOIN countries c ON u.country = c.id
-            WHERE u.role = :role
+            WHERE u.role = :role AND u.is_active = 1
             ORDER BY u.name
         ");
         $sql->execute(["role" => $role]);
